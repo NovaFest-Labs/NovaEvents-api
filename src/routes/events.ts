@@ -5,8 +5,21 @@ import { validateEventId } from "../middleware/validateEventId";
 
 const router = Router();
 
-router.get("/", async (_req: Request, res: Response) => {
-  res.status(501).json({ message: "not implemented" });
+router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const count = (await simulateContractCall("event_count")) as number;
+    const events = await Promise.all(
+      Array.from({ length: count }, (_, i) =>
+        simulateContractCall("get_event", xdr.ScVal.scvU32(i)).then((e) => ({
+          id: i,
+          ...(e as object),
+        }))
+      )
+    );
+    res.json(serializeBigInt(events));
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get(
