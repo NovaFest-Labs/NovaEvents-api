@@ -20,8 +20,16 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+const startedAt = Date.now();
+
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({
+    status: "ok",
+    version: process.env.npm_package_version ?? "unknown",
+    uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+    network: process.env.STELLAR_RPC_URL,
+    contractId: process.env.NOVA_EVENTS_CONTRACT_ID,
+  });
 });
 
 app.use("/api/events", eventsRouter);
