@@ -54,8 +54,17 @@ router.get(
 router.get(
   "/:id/sponsorships",
   validateEventId,
-  async (req: Request, res: Response) => {
-    res.status(501).json({ message: "not implemented", id: req.params.id });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      const sponsorships = await simulateContractCall(
+        "get_sponsorships",
+        xdr.ScVal.scvU32(id)
+      );
+      res.json(serializeBigInt(sponsorships));
+    } catch (err) {
+      next(err);
+    }
   }
 );
 
