@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import eventsRouter from "./routes/events";
+import { errorHandler } from "./middleware/errorHandler";
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/events", eventsRouter);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`NovaEvents API running on port ${PORT}`);
