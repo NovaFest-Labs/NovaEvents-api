@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Type Check & Build
+    name: Type Check, Test & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +23,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Test
+        run: npm test
