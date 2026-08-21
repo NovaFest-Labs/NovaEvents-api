@@ -2,7 +2,12 @@ import { Router, Request, Response, NextFunction } from "express";
 import { xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
 import { validateEventId } from "../middleware/validateEventId";
-import { getEventById, getTiersByEventId, getTicketById } from "../services/eventsService";
+import {
+  getEventById,
+  getTiersByEventId,
+  getTicketById,
+  getSponsorshipsByEventId,
+} from "../services/eventsService";
 
 const router = Router();
 
@@ -57,10 +62,7 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
-      const sponsorships = await simulateContractCall(
-        "get_sponsorships",
-        xdr.ScVal.scvU32(id)
-      );
+      const sponsorships = await getSponsorshipsByEventId(id);
       res.json(serializeBigInt(sponsorships));
     } catch (err) {
       next(err);

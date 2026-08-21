@@ -51,3 +51,21 @@ export async function getTicketById(eventId: number, ticketId: number): Promise<
     throw err;
   }
 }
+
+interface Sponsorship {
+  sponsor: unknown;
+  amount: bigint;
+}
+
+export async function getSponsorshipsByEventId(eventId: number): Promise<Sponsorship[]> {
+  // get_sponsorships never errors for a nonexistent event (the contract returns an
+  // empty list), so existence has to be checked separately via get_event.
+  await getEventById(eventId);
+
+  const sponsorships = (await simulateContractCall(
+    "get_sponsorships",
+    xdr.ScVal.scvU32(eventId)
+  )) as Sponsorship[];
+
+  return [...sponsorships].sort((a, b) => (a.amount < b.amount ? 1 : a.amount > b.amount ? -1 : 0));
+}

@@ -4,6 +4,7 @@ import {
   getEventById,
   getTiersByEventId,
   getTicketById,
+  getSponsorshipsByEventId,
   EventNotFoundError,
   TicketNotFoundError,
 } from "./eventsService";
@@ -106,5 +107,60 @@ describe("getTicketById", () => {
     vi.mocked(simulateContractCall).mockRejectedValue(rpcFailure);
 
     await expect(getTicketById(0, 0)).rejects.toBe(rpcFailure);
+  });
+});
+
+describe("getSponsorshipsByEventId", () => {
+  beforeEach(() => {
+    vi.mocked(simulateContractCall).mockReset();
+  });
+
+  function mockContract(sponsorships: unknown[]) {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") return { organizer: "GABC" };
+      if (funcName === "get_sponsorships") return sponsorships;
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+  }
+
+  it("returns sponsorships sorted by amount descending", async () => {
+    mockContract([
+      { sponsor: "GA", amount: 100n },
+      { sponsor: "GB", amount: 500n },
+      { sponsor: "GC", amount: 300n },
+    ]);
+
+    const result = await getSponsorshipsByEventId(0);
+
+    expect(result).toEqual([
+      { sponsor: "GB", amount: 500n },
+      { sponsor: "GC", amount: 300n },
+      { sponsor: "GA", amount: 100n },
+    ]);
+  });
+
+  it("returns an empty array (not an error) when the event has no sponsors", async () => {
+    mockContract([]);
+
+    await expect(getSponsorshipsByEventId(0)).resolves.toEqual([]);
+  });
+
+  it("throws EventNotFoundError when the event does not exist", async () => {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") throw new Error("event not found");
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+
+    await expect(getSponsorshipsByEventId(999)).rejects.toBeInstanceOf(EventNotFoundError);
+  });
+
+  it("rethrows unrelated errors instead of swallowing them", async () => {
+    const rpcFailure = new Error("RPC request timed out");
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") return { organizer: "GABC" };
+      throw rpcFailure;
+    });
+
+    await expect(getSponsorshipsByEventId(0)).rejects.toBe(rpcFailure);
   });
 });
