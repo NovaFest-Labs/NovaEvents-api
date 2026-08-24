@@ -45,3 +45,7 @@ See the [Issues](https://github.com/NovaFest-Labs/NovaEvents-api/issues) tab for
 
 - [NovaEvents contract](https://github.com/NovaFest-Labs/NovaEvents) — Soroban smart contract (Rust)
 - [NovaEvents App](https://github.com/NovaFest-Labs/NovaEvents-app) — frontend (Next.js)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
