@@ -59,8 +59,8 @@ describe("getTiersByEventId", () => {
     expect(simulateContractCall).toHaveBeenCalledWith("get_tiers", expect.anything());
   });
 
-  it("throws EventNotFoundError when the contract reports the tiers do not exist", async () => {
-    vi.mocked(simulateContractCall).mockRejectedValue(new Error("tiers not found"));
+  it("throws EventNotFoundError when the contract reports the event does not exist", async () => {
+    vi.mocked(simulateContractCall).mockRejectedValue(new Error("event not found"));
 
     await expect(getTiersByEventId(999)).rejects.toBeInstanceOf(EventNotFoundError);
   });

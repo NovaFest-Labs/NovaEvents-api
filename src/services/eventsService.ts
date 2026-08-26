@@ -39,7 +39,7 @@ export async function getTiersByEventId(eventId: number): Promise<unknown> {
   try {
     return await simulateContractCall("get_tiers", xdr.ScVal.scvU32(eventId));
   } catch (err) {
-    if (err instanceof Error && err.message.includes("tiers not found")) {
+    if (err instanceof Error && err.message.includes("event not found")) {
       throw new EventNotFoundError(eventId);
     }
     throw err;
