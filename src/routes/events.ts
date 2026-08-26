@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { validateEventId } from "../middleware/validateEventId";
 import { eventsListLimiter } from "../middleware/rateLimiter";
+import { uploadImage } from "../middleware/uploadImage";
 import {
   getEventById,
   getTiersByEventId,
@@ -9,6 +10,10 @@ import {
   getAllEvents,
   EventsUnavailableError,
 } from "../services/eventsService";
+import {
+  uploadEventImage,
+  ImageValidationError,
+} from "../services/imageService";
 
 const router = Router();
 
@@ -73,7 +78,9 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     const ticketId = Number(req.params.ticketId);
     if (!Number.isInteger(ticketId) || ticketId < 0) {
-      res.status(400).json({ error: "ticket id must be a non-negative integer" });
+      res
+        .status(400)
+        .json({ error: "ticket id must be a non-negative integer" });
       return;
     }
     try {
@@ -81,6 +88,49 @@ router.get(
       const ticket = await getTicketById(id, ticketId);
       res.json(serializeBigInt(ticket));
     } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/events/:id/image
+ *
+ * Upload a cover image for an event.
+ * Expects a multipart/form-data body with a single "image" field.
+ *
+ * Accepted types : JPEG, PNG, WebP, GIF
+ * Max size       : 5 MB
+ *
+ * Returns: { url: string } — the public URL of the uploaded image.
+ */
+router.post(
+  "/:id/image",
+  validateEventId,
+  (req: Request, res: Response, next: NextFunction) => {
+    // Run multer as a callback so we can forward its errors to errorHandler
+    uploadImage(req, res, (err) => {
+      if (err) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      next();
+    });
+  },
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.file) {
+      res.status(400).json({ error: "No image file provided." });
+      return;
+    }
+    try {
+      const id = Number(req.params.id);
+      const result = await uploadEventImage(id, req.file);
+      res.status(201).json({ url: result.url });
+    } catch (err) {
+      if (err instanceof ImageValidationError) {
+        res.status(400).json({ error: (err as Error).message });
+        return;
+      }
       next(err);
     }
   }
