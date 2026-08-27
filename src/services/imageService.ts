@@ -1,6 +1,7 @@
 import path from "path";
 import crypto from "crypto";
 import { uploadToS3, UploadResult } from "../lib/s3";
+import { getEventById } from "./eventsService";
 
 /** Maximum accepted file size: 5 MB */
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -32,6 +33,11 @@ export async function uploadEventImage(
   eventId: number,
   file: Express.Multer.File
 ): Promise<UploadResult> {
+  // Throws EventNotFoundError for a nonexistent event, before accepting the
+  // upload — otherwise anyone could fill the bucket with images for event
+  // IDs that don't exist.
+  await getEventById(eventId);
+
   // --- validation ---
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
     throw new ImageValidationError(
