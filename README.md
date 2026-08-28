@@ -25,6 +25,7 @@ Server starts on `http://localhost:3001`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check |
+| `GET` | `/api/admin` | Get the contract admin address |
 | `GET` | `/api/events` | List all events |
 | `GET` | `/api/events/:id` | Get event by ID |
 | `GET` | `/api/events/:id/tiers` | Get ticket tiers for an event |

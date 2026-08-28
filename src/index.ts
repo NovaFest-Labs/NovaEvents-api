@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import eventsRouter from "./routes/events";
 import { errorHandler } from "./middleware/errorHandler";
 import { globalLimiter } from "./middleware/rateLimiter";
+import { getAdmin } from "./services/adminService";
 
 dotenv.config();
 
@@ -33,6 +34,15 @@ app.get("/health", (_req, res) => {
     network: process.env.STELLAR_RPC_URL,
     contractId: process.env.NOVA_EVENTS_CONTRACT_ID,
   });
+});
+
+app.get("/api/admin", async (_req, res, next) => {
+  try {
+    const admin = await getAdmin();
+    res.json({ admin });
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.use("/api/events", eventsRouter);
