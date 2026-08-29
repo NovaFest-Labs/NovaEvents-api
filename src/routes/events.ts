@@ -7,6 +7,7 @@ import {
   getTiersByEventId,
   getTicketById,
   getSponsorshipsByEventId,
+  getPayoutsByEventId,
   getAllEvents,
   EventsUnavailableError,
 } from "../services/eventsService";
@@ -66,6 +67,20 @@ router.get(
       const id = Number(req.params.id);
       const sponsorships = await getSponsorshipsByEventId(id);
       res.json(serializeBigInt(sponsorships));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/:id/payouts",
+  validateEventId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      const payouts = await getPayoutsByEventId(id);
+      res.json(serializeBigInt(payouts));
     } catch (err) {
       next(err);
     }

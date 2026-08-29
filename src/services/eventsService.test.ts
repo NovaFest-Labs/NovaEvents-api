@@ -5,6 +5,7 @@ import {
   getTiersByEventId,
   getTicketById,
   getSponsorshipsByEventId,
+  getPayoutsByEventId,
   getAllEvents,
   EventNotFoundError,
   TicketNotFoundError,
@@ -200,5 +201,51 @@ describe("getAllEvents", () => {
     vi.mocked(simulateContractCall).mockRejectedValue(new Error("RPC request timed out"));
 
     await expect(getAllEvents()).rejects.toBeInstanceOf(EventsUnavailableError);
+  });
+});
+
+describe("getPayoutsByEventId", () => {
+  beforeEach(() => {
+    vi.mocked(simulateContractCall).mockReset();
+  });
+
+  function mockContract(payouts: unknown[]) {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") return { organizer: "GABC" };
+      if (funcName === "get_payouts") return payouts;
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+  }
+
+  it("returns the payouts for an event", async () => {
+    const fakePayouts = [{ recipient: "GA", amount: 500n }];
+    mockContract(fakePayouts);
+
+    await expect(getPayoutsByEventId(0)).resolves.toBe(fakePayouts);
+  });
+
+  it("returns an empty array (not an error) when the event has no payouts", async () => {
+    mockContract([]);
+
+    await expect(getPayoutsByEventId(0)).resolves.toEqual([]);
+  });
+
+  it("throws EventNotFoundError when the event does not exist", async () => {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") throw new Error("event not found");
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+
+    await expect(getPayoutsByEventId(999)).rejects.toBeInstanceOf(EventNotFoundError);
+  });
+
+  it("rethrows unrelated errors instead of swallowing them", async () => {
+    const rpcFailure = new Error("RPC request timed out");
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") return { organizer: "GABC" };
+      throw rpcFailure;
+    });
+
+    await expect(getPayoutsByEventId(0)).rejects.toBe(rpcFailure);
   });
 });

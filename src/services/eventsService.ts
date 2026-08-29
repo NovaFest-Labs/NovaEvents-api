@@ -95,3 +95,19 @@ export async function getSponsorshipsByEventId(eventId: number): Promise<Sponsor
 
   return [...sponsorships].sort((a, b) => (a.amount < b.amount ? 1 : a.amount > b.amount ? -1 : 0));
 }
+
+interface Payout {
+  recipient: unknown;
+  amount: bigint;
+}
+
+export async function getPayoutsByEventId(eventId: number): Promise<Payout[]> {
+  // get_payouts never errors for a nonexistent event (the contract returns an
+  // empty list), so existence has to be checked separately via get_event.
+  await getEventById(eventId);
+
+  return (await simulateContractCall(
+    "get_payouts",
+    xdr.ScVal.scvU32(eventId)
+  )) as Payout[];
+}
