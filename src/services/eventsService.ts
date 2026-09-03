@@ -35,6 +35,22 @@ export async function getEventById(eventId: number): Promise<unknown> {
   }
 }
 
+export async function getEventOrganizerById(eventId: number): Promise<{ event_id: number; organizer: unknown }> {
+  try {
+    const event = await simulateContractCall("get_event", xdr.ScVal.scvU32(eventId));
+    const eventObj = event as Record<string, unknown>;
+    return {
+      event_id: eventId,
+      organizer: eventObj.organizer,
+    };
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("event not found")) {
+      throw new EventNotFoundError(eventId);
+    }
+    throw err;
+  }
+}
+
 export async function getTiersByEventId(eventId: number): Promise<unknown> {
   try {
     return await simulateContractCall("get_tiers", xdr.ScVal.scvU32(eventId));
