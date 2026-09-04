@@ -6,6 +6,7 @@ import {
   getTicketById,
   getSponsorshipsByEventId,
   getPayoutsByEventId,
+  getSponsorShare,
   getAllEvents,
   EventNotFoundError,
   TicketNotFoundError,
@@ -247,5 +248,42 @@ describe("getPayoutsByEventId", () => {
     });
 
     await expect(getPayoutsByEventId(0)).rejects.toBe(rpcFailure);
+  });
+});
+
+describe("getSponsorShare", () => {
+  const SPONSOR = "GCVCPLU7JBIOIDZARACNU27LETDUJF4V4HN3KCFYE7T6KHD7SKF7IT5B";
+
+  beforeEach(() => {
+    vi.mocked(simulateContractCall).mockReset();
+  });
+
+  it("returns the sponsor's share in basis points", async () => {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") return { organizer: "GABC" };
+      if (funcName === "get_sponsor_share") return 3000;
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+
+    await expect(getSponsorShare(0, SPONSOR)).resolves.toBe(3000);
+  });
+
+  it("throws EventNotFoundError when the event does not exist", async () => {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") throw new Error("event not found");
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+
+    await expect(getSponsorShare(999, SPONSOR)).rejects.toBeInstanceOf(EventNotFoundError);
+  });
+
+  it("rethrows unrelated errors instead of swallowing them", async () => {
+    const rpcFailure = new Error("RPC request timed out");
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string) => {
+      if (funcName === "get_event") return { organizer: "GABC" };
+      throw rpcFailure;
+    });
+
+    await expect(getSponsorShare(0, SPONSOR)).rejects.toBe(rpcFailure);
   });
 });

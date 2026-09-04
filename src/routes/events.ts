@@ -2,12 +2,14 @@ import { Router, Request, Response, NextFunction } from "express";
 import { validateEventId } from "../middleware/validateEventId";
 import { eventsListLimiter } from "../middleware/rateLimiter";
 import { uploadImage } from "../middleware/uploadImage";
+import { isValidStellarAddress } from "../lib/validation";
 import {
   getEventById,
   getTiersByEventId,
   getTicketById,
   getSponsorshipsByEventId,
   getPayoutsByEventId,
+  getSponsorShare,
   getAllEvents,
   EventsUnavailableError,
 } from "../services/eventsService";
@@ -81,6 +83,25 @@ router.get(
       const id = Number(req.params.id);
       const payouts = await getPayoutsByEventId(id);
       res.json(serializeBigInt(payouts));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/:id/sponsors/:address/share",
+  validateEventId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const address = String(req.params.address);
+    if (!isValidStellarAddress(address)) {
+      res.status(400).json({ error: "sponsor address is not a valid Stellar address" });
+      return;
+    }
+    try {
+      const id = Number(req.params.id);
+      const shareBps = await getSponsorShare(id, address);
+      res.json({ event_id: id, sponsor: address, share_bps: shareBps });
     } catch (err) {
       next(err);
     }

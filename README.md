@@ -31,6 +31,7 @@ Server starts on `http://localhost:3001`.
 | `GET` | `/api/events/:id/tiers` | Get ticket tiers for an event |
 | `GET` | `/api/events/:id/sponsorships` | Get all sponsorships for an event |
 | `GET` | `/api/events/:id/payouts` | Get all payouts disbursed for an event |
+| `GET` | `/api/events/:id/sponsors/:address/share` | Get a sponsor's share of an event's total sponsorship, in basis points |
 | `GET` | `/api/events/:id/tickets/:ticketId` | Get ticket by ID |
 | `POST` | `/api/events/:id/image` | Upload a cover image for an event |
 

@@ -1,4 +1,4 @@
-import { xdr } from "@stellar/stellar-sdk";
+import { Address, xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
 
 export class EventNotFoundError extends Error {
@@ -110,4 +110,18 @@ export async function getPayoutsByEventId(eventId: number): Promise<Payout[]> {
     "get_payouts",
     xdr.ScVal.scvU32(eventId)
   )) as Payout[];
+}
+
+/** Returns a sponsor's share of an event's total sponsorship, in basis points. */
+export async function getSponsorShare(
+  eventId: number,
+  sponsorAddress: string
+): Promise<number> {
+  await getEventById(eventId);
+
+  return (await simulateContractCall(
+    "get_sponsor_share",
+    xdr.ScVal.scvU32(eventId),
+    Address.fromString(sponsorAddress).toScVal()
+  )) as number;
 }
