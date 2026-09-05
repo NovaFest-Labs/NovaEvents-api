@@ -60,6 +60,16 @@ export async function getEventOrganizerById(eventId: number): Promise<{ event_id
   }
 }
 
+export async function getEventStatusById(
+  eventId: number
+): Promise<{ event_id: number; status: unknown }> {
+  const event = (await getEventById(eventId)) as Record<string, unknown>;
+  return {
+    event_id: eventId,
+    status: event.status,
+  };
+}
+
 export async function getTiersByEventId(eventId: number): Promise<unknown> {
   try {
     return await simulateContractCall("get_tiers", xdr.ScVal.scvU32(eventId));

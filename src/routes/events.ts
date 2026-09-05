@@ -7,6 +7,7 @@ import { isValidStellarAddress, isValidEmail } from "../lib/validation";
 import {
   getEventById,
   getEventOrganizerById,
+  getEventStatusById,
   getTiersByEventId,
   getTicketById,
   getSponsorshipsByEventId,
@@ -58,6 +59,20 @@ router.get(
       const id = Number(req.params.id);
       const organizer = await getEventOrganizerById(id);
       res.json(serializeBigInt(organizer));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/:id/status",
+  validateEventId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      const status = await getEventStatusById(id);
+      res.json(serializeBigInt(status));
     } catch (err) {
       next(err);
     }
