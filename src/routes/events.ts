@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { validateEventId } from "../middleware/validateEventId";
 import { eventsListLimiter } from "../middleware/rateLimiter";
 import { uploadImage } from "../middleware/uploadImage";
-import { isValidStellarAddress } from "../lib/validation";
+import { isValidStellarAddress, isValidEmail } from "../lib/validation";
 import {
   getEventById,
   getEventOrganizerById,
@@ -18,6 +18,7 @@ import {
   uploadEventImage,
   ImageValidationError,
 } from "../services/imageService";
+import { sendTicketPurchaseConfirmation } from "../services/notificationService";
 
 const router = Router();
 
@@ -138,6 +139,46 @@ router.get(
       const id = Number(req.params.id);
       const ticket = await getTicketById(id, ticketId);
       res.json(serializeBigInt(ticket));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/events/:id/tickets/:ticketId/notify
+ *
+ * Sends a ticket-purchase confirmation email. Meant to be called by the
+ * client right after its on-chain purchase transaction confirms.
+ *
+ * Body: { "email": string }
+ *
+ * Always responds 202 once the ticket is confirmed to exist — email
+ * delivery is best-effort and its failure must never surface as an error
+ * for the (already-succeeded) on-chain purchase it's confirming.
+ */
+router.post(
+  "/:id/tickets/:ticketId/notify",
+  validateEventId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const ticketId = Number(req.params.ticketId);
+    if (!Number.isInteger(ticketId) || ticketId < 0) {
+      res
+        .status(400)
+        .json({ error: "ticket id must be a non-negative integer" });
+      return;
+    }
+
+    const email = req.body?.email;
+    if (typeof email !== "string" || !isValidEmail(email)) {
+      res.status(400).json({ error: "a valid email address is required" });
+      return;
+    }
+
+    try {
+      const id = Number(req.params.id);
+      const result = await sendTicketPurchaseConfirmation(id, ticketId, email);
+      res.status(202).json(result);
     } catch (err) {
       next(err);
     }

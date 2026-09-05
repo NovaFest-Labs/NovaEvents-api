@@ -34,6 +34,7 @@ Server starts on `http://localhost:3001`.
 | `GET` | `/api/events/:id/payouts` | Get all payouts disbursed for an event |
 | `GET` | `/api/events/:id/sponsors/:address/share` | Get a sponsor's share of an event's total sponsorship, in basis points |
 | `GET` | `/api/events/:id/tickets/:ticketId` | Get ticket by ID |
+| `POST` | `/api/events/:id/tickets/:ticketId/notify` | Send a ticket-purchase confirmation email |
 | `POST` | `/api/events/:id/image` | Upload a cover image for an event |
 
 All write operations (buy ticket, sponsor, create event) happen directly on-chain through the contract — not through this API.
@@ -56,6 +57,42 @@ When a limit is exceeded the API responds with **HTTP 429** and a JSON body:
 ```
 
 Standard `RateLimit-*` response headers (RFC 9110 draft-8) are included on every response so clients can track their remaining quota.
+
+## Notifications
+
+`POST /api/events/:id/tickets/:ticketId/notify` sends a ticket-purchase confirmation email via [Resend](https://resend.com).
+
+**Trigger mechanism:** an explicit endpoint the client calls right after its on-chain purchase transaction confirms, rather than a poller watching on-chain events. The client already knows the exact moment of success — it submitted and awaited the transaction — so polling would just be a slower, more complex way of learning something the caller already knows. This also keeps the first pass simple; a polling/indexer-based trigger (e.g. to also notify sponsors or catch purchases made outside this API) can be layered on later without changing this endpoint's contract.
+
+### Request
+
+```
+POST /api/events/:id/tickets/:ticketId/notify
+Content-Type: application/json
+
+{ "email": "buyer@example.com" }
+```
+
+### Response
+
+The ticket is looked up on-chain first (a 404 if it doesn't exist is a real client error). Once found, the endpoint **always responds 202** — email delivery is best-effort and failing to send must never surface as an error for the on-chain purchase it's confirming:
+
+```json
+{ "delivered": true }
+```
+
+```json
+{ "delivered": false, "error": "Resend API request failed (422): ..." }
+```
+
+### Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `RESEND_API_KEY` | Yes | API key from your Resend account |
+| `EMAIL_FROM_ADDRESS` | Yes | Verified sender, e.g. `NovaEvents <notifications@yourdomain.com>` |
+
+Only ticket-purchase confirmation is wired up in this first pass; event-update notifications to attendees and a push-notification channel are natural follow-ups on top of the same `sendEmail` helper (`src/lib/email.ts`).
 
 ## Image Upload
 
