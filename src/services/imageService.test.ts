@@ -2,14 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../lib/stellar", () => ({ simulateContractCall: vi.fn() }));
 vi.mock("../lib/s3", () => ({ uploadToS3: vi.fn() }));
+vi.mock("../lib/imageStore", () => ({ setEventImageUrl: vi.fn(), getEventImageUrl: vi.fn() }));
 
 import { simulateContractCall } from "../lib/stellar";
 import { uploadToS3 } from "../lib/s3";
+import { setEventImageUrl } from "../lib/imageStore";
 import { EventNotFoundError } from "./eventsService";
 import { uploadEventImage } from "./imageService";
 
 const mockSimulateContractCall = vi.mocked(simulateContractCall);
 const mockUploadToS3 = vi.mocked(uploadToS3);
+const mockSetEventImageUrl = vi.mocked(setEventImageUrl);
 
 function fakeFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
   return {
@@ -25,6 +28,7 @@ describe("uploadEventImage", () => {
   beforeEach(() => {
     mockSimulateContractCall.mockReset();
     mockUploadToS3.mockReset();
+    mockSetEventImageUrl.mockReset();
   });
 
   it("throws EventNotFoundError instead of uploading when the event does not exist", async () => {
@@ -44,5 +48,14 @@ describe("uploadEventImage", () => {
 
     expect(result.url).toBe("https://cdn.example/x.png");
     expect(mockUploadToS3).toHaveBeenCalledOnce();
+  });
+
+  it("persists the uploaded URL against the event so it can be read back later", async () => {
+    mockSimulateContractCall.mockResolvedValue({ organizer: "GABC" });
+    mockUploadToS3.mockResolvedValue({ url: "https://cdn.example/x.png", key: "x.png" });
+
+    await uploadEventImage(7, fakeFile());
+
+    expect(mockSetEventImageUrl).toHaveBeenCalledWith(7, "https://cdn.example/x.png");
   });
 });

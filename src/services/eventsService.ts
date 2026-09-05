@@ -1,5 +1,6 @@
 import { Address, xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
+import { getEventImageUrl } from "../lib/imageStore";
 
 export class EventNotFoundError extends Error {
   constructor(public readonly eventId: number) {
@@ -24,9 +25,17 @@ export class TicketNotFoundError extends Error {
   }
 }
 
+/** Merges in the event's stored cover image URL, omitting the field when none has been uploaded. */
+function withImageUrl(event: unknown, eventId: number): unknown {
+  const imageUrl = getEventImageUrl(eventId);
+  if (!imageUrl) return event;
+  return { ...(event as object), image_url: imageUrl };
+}
+
 export async function getEventById(eventId: number): Promise<unknown> {
   try {
-    return await simulateContractCall("get_event", xdr.ScVal.scvU32(eventId));
+    const event = await simulateContractCall("get_event", xdr.ScVal.scvU32(eventId));
+    return withImageUrl(event, eventId);
   } catch (err) {
     if (err instanceof Error && err.message.includes("event not found")) {
       throw new EventNotFoundError(eventId);
@@ -86,7 +95,7 @@ export async function getAllEvents(): Promise<Array<Record<string, unknown>>> {
           simulateContractCall("get_event", xdr.ScVal.scvU32(id)),
           simulateContractCall("get_tiers", xdr.ScVal.scvU32(id)),
         ]);
-        return { id, ...(event as object), tiers };
+        return withImageUrl({ id, ...(event as object), tiers }, id) as Record<string, unknown>;
       })
     );
   } catch (err) {
