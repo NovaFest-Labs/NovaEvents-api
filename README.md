@@ -161,7 +161,12 @@ The endpoint works with any S3-compatible provider. Set the following environmen
 
 Images are stored under the key `events/<eventId>/cover-<random>.ext` so each upload is collision-resistant and the event they belong to is clear from the path.
 
-> **Note:** The image URL is returned from the upload response. Persisting the URL against the event record (so it can be read back later) is tracked in the DB-indexing scope — see the [Issues][...]
+### Reading the image back
+
+The uploaded URL is persisted to a lightweight local JSON store (`data/event-images.json`) keyed by event ID, so it can be read back later without re-uploading:
+
+- `GET /api/events/:id` and `GET /api/events` include an `image_url` field once an image has been uploaded for that event (the field is omitted, not `null`, when none has been uploaded).
+- Re-uploading for the same event **replaces** the URL returned by the API. The previous S3 object is intentionally left in place rather than deleted — cleaning up orphaned objects is left as a follow-up (e.g. a periodic sweep job) rather than done inline on upload.
 
 ## Open for contributors
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { simulateContractCall } from "../lib/stellar";
+import { getEventImageUrl } from "../lib/imageStore";
 import {
   getEventById,
   getEventOrganizerById,
@@ -18,9 +19,14 @@ vi.mock("../lib/stellar", () => ({
   simulateContractCall: vi.fn(),
 }));
 
+vi.mock("../lib/imageStore", () => ({
+  getEventImageUrl: vi.fn(),
+}));
+
 describe("getEventById", () => {
   beforeEach(() => {
     vi.mocked(simulateContractCall).mockReset();
+    vi.mocked(getEventImageUrl).mockReset();
   });
 
   it("returns the event when the contract call succeeds", async () => {
@@ -29,7 +35,7 @@ describe("getEventById", () => {
 
     const result = await getEventById(0);
 
-    expect(result).toBe(fakeEvent);
+    expect(result).toEqual(fakeEvent);
     expect(simulateContractCall).toHaveBeenCalledWith("get_event", expect.anything());
   });
 
@@ -44,6 +50,24 @@ describe("getEventById", () => {
     vi.mocked(simulateContractCall).mockRejectedValue(rpcFailure);
 
     await expect(getEventById(0)).rejects.toBe(rpcFailure);
+  });
+
+  it("includes image_url when an image has been uploaded for the event", async () => {
+    vi.mocked(simulateContractCall).mockResolvedValue({ organizer: "GABC" });
+    vi.mocked(getEventImageUrl).mockReturnValue("https://cdn.example/cover.png");
+
+    const result = await getEventById(0);
+
+    expect(result).toEqual({ organizer: "GABC", image_url: "https://cdn.example/cover.png" });
+  });
+
+  it("omits image_url when no image has been uploaded for the event", async () => {
+    vi.mocked(simulateContractCall).mockResolvedValue({ organizer: "GABC" });
+    vi.mocked(getEventImageUrl).mockReturnValue(undefined);
+
+    const result = await getEventById(0);
+
+    expect(result).not.toHaveProperty("image_url");
   });
 });
 
@@ -147,6 +171,7 @@ describe("getTicketById", () => {
 describe("getSponsorshipsByEventId", () => {
   beforeEach(() => {
     vi.mocked(simulateContractCall).mockReset();
+    vi.mocked(getEventImageUrl).mockReset();
   });
 
   function mockContract(sponsorships: unknown[]) {
@@ -202,6 +227,7 @@ describe("getSponsorshipsByEventId", () => {
 describe("getAllEvents", () => {
   beforeEach(() => {
     vi.mocked(simulateContractCall).mockReset();
+    vi.mocked(getEventImageUrl).mockReset();
   });
 
   it("returns each event merged with its id and tiers", async () => {
@@ -217,6 +243,23 @@ describe("getAllEvents", () => {
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ id: 0, tiers: [{ name: "General" }] });
     expect(result[1]).toMatchObject({ id: 1, tiers: [{ name: "General" }] });
+  });
+
+  it("includes image_url only for events that have one uploaded", async () => {
+    vi.mocked(simulateContractCall).mockImplementation(async (funcName: string, ...args) => {
+      if (funcName === "event_count") return 2;
+      if (funcName === "get_event") return { name: `Event ${args[0]}` };
+      if (funcName === "get_tiers") return [];
+      throw new Error(`unexpected contract call: ${funcName}`);
+    });
+    vi.mocked(getEventImageUrl).mockImplementation((eventId: number) =>
+      eventId === 1 ? "https://cdn.example/1.png" : undefined
+    );
+
+    const result = await getAllEvents();
+
+    expect(result[0]).not.toHaveProperty("image_url");
+    expect(result[1]).toMatchObject({ image_url: "https://cdn.example/1.png" });
   });
 
   it("returns an empty array when there are no events", async () => {
@@ -238,6 +281,7 @@ describe("getAllEvents", () => {
 describe("getPayoutsByEventId", () => {
   beforeEach(() => {
     vi.mocked(simulateContractCall).mockReset();
+    vi.mocked(getEventImageUrl).mockReset();
   });
 
   function mockContract(payouts: unknown[]) {
@@ -286,6 +330,7 @@ describe("getSponsorShare", () => {
 
   beforeEach(() => {
     vi.mocked(simulateContractCall).mockReset();
+    vi.mocked(getEventImageUrl).mockReset();
   });
 
   it("returns the sponsor's share in basis points", async () => {

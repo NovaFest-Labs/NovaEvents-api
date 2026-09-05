@@ -1,6 +1,7 @@
 import path from "path";
 import crypto from "crypto";
 import { uploadToS3, UploadResult } from "../lib/s3";
+import { setEventImageUrl } from "../lib/imageStore";
 import { getEventById } from "./eventsService";
 
 /** Maximum accepted file size: 5 MB */
@@ -56,7 +57,14 @@ export async function uploadEventImage(
   const randomSuffix = crypto.randomBytes(8).toString("hex");
   const key = `events/${eventId}/cover-${randomSuffix}${ext}`;
 
-  return uploadToS3(key, file.buffer, file.mimetype);
+  const result = await uploadToS3(key, file.buffer, file.mimetype);
+
+  // Re-uploading replaces which URL is returned for this event. The old S3
+  // object is intentionally left in place rather than deleted — cleaning up
+  // orphaned objects is left as a follow-up (e.g. a periodic sweep).
+  setEventImageUrl(eventId, result.url);
+
+  return result;
 }
 
 function mimeToExt(mime: string): string {
