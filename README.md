@@ -28,6 +28,7 @@ Server starts on `http://localhost:3001`.
 | `GET` | `/api/admin` | Get the contract admin address |
 | `GET` | `/api/events` | List all events |
 | `GET` | `/api/events/:id` | Get event by ID |
+| `GET` | `/api/events/:id/organizer` | Get organizer address for an event |
 | `GET` | `/api/events/:id/tiers` | Get ticket tiers for an event |
 | `GET` | `/api/events/:id/sponsorships` | Get all sponsorships for an event |
 | `GET` | `/api/events/:id/payouts` | Get all payouts disbursed for an event |
@@ -103,7 +104,7 @@ The endpoint works with any S3-compatible provider. Set the following environmen
 
 Images are stored under the key `events/<eventId>/cover-<random>.ext` so each upload is collision-resistant and the event they belong to is clear from the path.
 
-> **Note:** The image URL is returned from the upload response. Persisting the URL against the event record (so it can be read back later) is tracked in the DB-indexing scope — see the [Issues](https://github.com/NovaFest-Labs/NovaEvents-api/issues) tab.
+> **Note:** The image URL is returned from the upload response. Persisting the URL against the event record (so it can be read back later) is tracked in the DB-indexing scope — see the [Issues][...]
 
 ## Open for contributors
 

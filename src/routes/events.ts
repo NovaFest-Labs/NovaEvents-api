@@ -5,6 +5,7 @@ import { uploadImage } from "../middleware/uploadImage";
 import { isValidStellarAddress } from "../lib/validation";
 import {
   getEventById,
+  getEventOrganizerById,
   getTiersByEventId,
   getTicketById,
   getSponsorshipsByEventId,
@@ -41,6 +42,20 @@ router.get(
       const id = Number(req.params.id);
       const event = await getEventById(id);
       res.json(serializeBigInt(event));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/:id/organizer",
+  validateEventId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      const organizer = await getEventOrganizerById(id);
+      res.json(serializeBigInt(organizer));
     } catch (err) {
       next(err);
     }
