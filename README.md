@@ -29,6 +29,7 @@ Server starts on `http://localhost:3001`.
 | `GET` | `/api/events` | List all events |
 | `GET` | `/api/events/:id` | Get event by ID |
 | `GET` | `/api/events/:id/organizer` | Get organizer address for an event |
+| `GET` | `/api/events/:id/status` | Get an event's status (Active/Ended/Cancelled) |
 | `GET` | `/api/events/:id/tiers` | Get ticket tiers for an event |
 | `GET` | `/api/events/:id/sponsorships` | Get all sponsorships for an event |
 | `GET` | `/api/events/:id/payouts` | Get all payouts disbursed for an event |
