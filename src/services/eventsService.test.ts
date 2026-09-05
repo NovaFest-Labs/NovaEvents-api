@@ -6,6 +6,7 @@ import {
   getEventOrganizerById,
   getEventStatusById,
   getTiersByEventId,
+  getTicketCountByEventId,
   getTicketById,
   getSponsorshipsByEventId,
   getPayoutsByEventId,
@@ -155,6 +156,45 @@ describe("getTiersByEventId", () => {
     vi.mocked(simulateContractCall).mockRejectedValue(rpcFailure);
 
     await expect(getTiersByEventId(0)).rejects.toBe(rpcFailure);
+  });
+});
+
+describe("getTicketCountByEventId", () => {
+  beforeEach(() => {
+    vi.mocked(simulateContractCall).mockReset();
+  });
+
+  it("returns the sum of tickets_sold across all tiers", async () => {
+    vi.mocked(simulateContractCall).mockResolvedValue([
+      { name: "General", tickets_sold: 3 },
+      { name: "VIP", tickets_sold: 2 },
+    ]);
+
+    const result = await getTicketCountByEventId(0);
+
+    expect(result).toEqual({ event_id: 0, ticket_count: 5 });
+  });
+
+  it("returns zero when the event has no tiers", async () => {
+    vi.mocked(simulateContractCall).mockResolvedValue([]);
+
+    await expect(getTicketCountByEventId(0)).resolves.toEqual({
+      event_id: 0,
+      ticket_count: 0,
+    });
+  });
+
+  it("throws EventNotFoundError when the event does not exist", async () => {
+    vi.mocked(simulateContractCall).mockRejectedValue(new Error("event not found"));
+
+    await expect(getTicketCountByEventId(999)).rejects.toBeInstanceOf(EventNotFoundError);
+  });
+
+  it("rethrows unrelated errors instead of swallowing them", async () => {
+    const rpcFailure = new Error("RPC request timed out");
+    vi.mocked(simulateContractCall).mockRejectedValue(rpcFailure);
+
+    await expect(getTicketCountByEventId(0)).rejects.toBe(rpcFailure);
   });
 });
 
