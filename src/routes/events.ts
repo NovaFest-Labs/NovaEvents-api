@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { validateEventId } from "../middleware/validateEventId";
 import { eventsListLimiter } from "../middleware/rateLimiter";
 import { uploadImage } from "../middleware/uploadImage";
+import { verifyOrganizer } from "../middleware/verifyOrganizer";
 import { isValidStellarAddress, isValidEmail } from "../lib/validation";
 import {
   getEventById,
@@ -194,11 +195,15 @@ router.post(
  * Accepted types : JPEG, PNG, WebP, GIF
  * Max size       : 5 MB
  *
+ * Requires proof that the caller controls the event's on-chain organizer
+ * wallet — see verifyOrganizer for the required headers.
+ *
  * Returns: { url: string } — the public URL of the uploaded image.
  */
 router.post(
   "/:id/image",
   validateEventId,
+  verifyOrganizer,
   (req: Request, res: Response, next: NextFunction) => {
     // Run multer as a callback so we can forward its errors to errorHandler
     uploadImage(req, res, (err) => {

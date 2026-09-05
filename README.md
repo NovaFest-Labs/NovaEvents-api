@@ -98,6 +98,24 @@ Only ticket-purchase confirmation is wired up in this first pass; event-update n
 
 `POST /api/events/:id/image` accepts a `multipart/form-data` body with a single `image` field and stores the file in an S3-compatible object store, returning the public URL.
 
+### Organizer authorization
+
+Image upload is an off-chain write (images can't live on-chain), but it must still be scoped to the event's actual organizer. The caller proves control of the organizer's Stellar wallet with a signed challenge, sent as request headers rather than in the body so it works alongside `multipart/form-data`:
+
+| Header | Description |
+|--------|-------------|
+| `x-organizer-address` | The organizer's Stellar public key (`G...`) |
+| `x-organizer-timestamp` | `Date.now()` in ms when the signature was created |
+| `x-organizer-signature` | base64 ed25519 signature (via the organizer's `Keypair`) of the string `novaevents:upload-image:<eventId>:<timestamp>` |
+
+The server:
+
+1. Looks up the event's on-chain organizer via `get_event` and rejects if `x-organizer-address` doesn't match it.
+2. Rebuilds the challenge string from the URL's event ID and the supplied timestamp, and verifies the signature against `x-organizer-address`.
+3. Rejects timestamps more than 5 minutes old or in the future, so a captured header can't be replayed indefinitely.
+
+This requires no new on-chain call beyond the existing `get_event` read, and reuses the wallet the organizer already holds — no separate credential to issue or store.
+
 ### Accepted files
 
 | Constraint | Value |
@@ -119,6 +137,8 @@ On error the API returns an appropriate HTTP status and a `{ "error": "..." }` b
 | Wrong MIME type | 400 |
 | File exceeds 5 MB | 400 |
 | Invalid event ID | 400 |
+| Missing/expired/invalid organizer signature | 401 |
+| Signer is not the event's organizer | 403 |
 | S3 / storage failure | 500 |
 
 ### Object storage configuration
