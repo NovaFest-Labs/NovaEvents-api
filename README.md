@@ -24,7 +24,7 @@ Server starts on `http://localhost:3001`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | Health check |
+| `GET` | `/health` | Health check — 200 with `rpcReachable: true` if the configured Soroban RPC is reachable, 503 with `rpcReachable: false` otherwise |
 | `GET` | `/api/admin` | Get the contract admin address |
 | `GET` | `/api/events` | List all events |
 | `GET` | `/api/events/:id` | Get event by ID |
