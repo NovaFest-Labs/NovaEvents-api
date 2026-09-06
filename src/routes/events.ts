@@ -9,6 +9,7 @@ import {
   getEventOrganizerById,
   getEventStatusById,
   getTiersByEventId,
+  getTicketCountByEventId,
   getTicketById,
   getSponsorshipsByEventId,
   getPayoutsByEventId,
@@ -87,6 +88,20 @@ router.get(
       const id = Number(req.params.id);
       const tiers = await getTiersByEventId(id);
       res.json(serializeBigInt(tiers));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  "/:id/ticket-count",
+  validateEventId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = Number(req.params.id);
+      const result = await getTicketCountByEventId(id);
+      res.json(serializeBigInt(result));
     } catch (err) {
       next(err);
     }

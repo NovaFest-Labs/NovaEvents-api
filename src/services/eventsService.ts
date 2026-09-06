@@ -147,6 +147,19 @@ export async function getPayoutsByEventId(eventId: number): Promise<Payout[]> {
   )) as Payout[];
 }
 
+interface TicketTier {
+  tickets_sold: number;
+}
+
+/** Returns the total number of tickets sold across all tiers of an event. */
+export async function getTicketCountByEventId(
+  eventId: number
+): Promise<{ event_id: number; ticket_count: number }> {
+  const tiers = (await getTiersByEventId(eventId)) as TicketTier[];
+  const ticket_count = tiers.reduce((sum, tier) => sum + tier.tickets_sold, 0);
+  return { event_id: eventId, ticket_count };
+}
+
 /** Returns a sponsor's share of an event's total sponsorship, in basis points. */
 export async function getSponsorShare(
   eventId: number,
