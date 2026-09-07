@@ -8,6 +8,8 @@ import { globalLimiter } from "./middleware/rateLimiter";
 import { getAdmin } from "./services/adminService";
 import { rpcServer } from "./lib/stellar";
 import { checkRpcHealth } from "./lib/rpcHealth";
+import { requestLogger } from "./middleware/logger";
+import { logger } from "./lib/logger";
 
 // start indexer if enabled
 import { startIndexer } from "./services/indexer";
@@ -17,7 +19,7 @@ dotenv.config();
 const REQUIRED_ENV = ["STELLAR_RPC_URL", "NOVA_EVENTS_CONTRACT_ID"];
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length > 0) {
-  console.error(`Missing required env vars: ${missing.join(", ")}`);
+  logger.error({ missing }, `Missing required env vars: ${missing.join(", ")}`);
   process.exit(1);
 }
 
@@ -28,6 +30,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(globalLimiter);
+
+// request logging middleware — logs method, path, status, and latency
+app.use(requestLogger);
 
 const startedAt = Date.now();
 const RPC_HEALTH_TIMEOUT_MS = 3000;
@@ -64,7 +69,7 @@ app.use(errorHandler);
 startIndexer();
 
 app.listen(PORT, () => {
-  console.log(`NovaEvents API running on port ${PORT}`);
+  logger.info({ port: PORT }, `NovaEvents API running`);
 });
 
 export default app;

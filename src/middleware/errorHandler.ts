@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { EventNotFoundError, TicketNotFoundError } from "../services/eventsService";
+import { logger } from "../lib/logger";
 
 export function errorHandler(
   err: Error,
@@ -7,7 +8,8 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  console.error(err.message);
+  // Log structured error with stack when available
+  logger.error({ err: { message: err.message, stack: (err as any).stack } }, "Unhandled error");
 
   if (err instanceof EventNotFoundError || err instanceof TicketNotFoundError) {
     res.status(404).json({ error: err.message });
