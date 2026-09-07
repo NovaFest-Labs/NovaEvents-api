@@ -1,6 +1,7 @@
 import { Address, xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
 import { getEventImageUrl } from "../lib/imageStore";
+import db from "../lib/db";
 
 export class EventNotFoundError extends Error {
   constructor(public readonly eventId: number) {
@@ -98,16 +99,8 @@ export async function getTicketById(eventId: number, ticketId: number): Promise<
 
 export async function getAllEvents(): Promise<Array<Record<string, unknown>>> {
   try {
-    const count = (await simulateContractCall("event_count")) as number;
-    return await Promise.all(
-      Array.from({ length: count }, async (_, id) => {
-        const [event, tiers] = await Promise.all([
-          simulateContractCall("get_event", xdr.ScVal.scvU32(id)),
-          simulateContractCall("get_tiers", xdr.ScVal.scvU32(id)),
-        ]);
-        return withImageUrl({ id, ...(event as object), tiers }, id) as Record<string, unknown>;
-      })
-    );
+    const rows = db.prepare("SELECT payload FROM events_index ORDER BY id").all();
+    return rows.map((r: any) => JSON.parse(r.payload) as Record<string, unknown>);
   } catch (err) {
     throw new EventsUnavailableError(err);
   }

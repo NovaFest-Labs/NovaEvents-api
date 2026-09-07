@@ -22,7 +22,8 @@
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.2.0",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "better-sqlite3": "^8.4.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
