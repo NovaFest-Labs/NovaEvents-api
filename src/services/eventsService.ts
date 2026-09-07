@@ -99,8 +99,8 @@ export async function getTicketById(eventId: number, ticketId: number): Promise<
 
 export async function getAllEvents(): Promise<Array<Record<string, unknown>>> {
   try {
-    const rows = db.prepare("SELECT payload FROM events_index ORDER BY id").all();
-    return rows.map((r: any) => JSON.parse(r.payload) as Record<string, unknown>);
+    const rows = db.prepare("SELECT payload FROM events_index ORDER BY id").all() as { payload: string }[];
+    return rows.map((r) => JSON.parse(r.payload) as Record<string, unknown>);
   } catch (err) {
     throw new EventsUnavailableError(err);
   }
