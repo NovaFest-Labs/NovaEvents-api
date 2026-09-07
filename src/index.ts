@@ -11,6 +11,9 @@ import { checkRpcHealth } from "./lib/rpcHealth";
 import { requestLogger } from "./middleware/logger";
 import { logger } from "./lib/logger";
 
+// start indexer if enabled
+import { startIndexer } from "./services/indexer";
+
 dotenv.config();
 
 const REQUIRED_ENV = ["STELLAR_RPC_URL", "NOVA_EVENTS_CONTRACT_ID"];
@@ -61,6 +64,9 @@ app.get("/api/admin", async (_req, res, next) => {
 
 app.use("/api/events", eventsRouter);
 app.use(errorHandler);
+
+// start background indexer (unless disabled)
+startIndexer();
 
 app.listen(PORT, () => {
   logger.info({ port: PORT }, `NovaEvents API running`);
