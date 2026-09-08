@@ -159,7 +159,7 @@ router.get(
   "/:id/tickets/:ticketId",
   validateEventId,
   async (req: Request, res: Response, next: NextFunction) => {
-    if (!/^\d+$/.test(req.params.ticketId)) {
+    if (!/^\d+$/.test(String(req.params.ticketId))) {
       res
         .status(400)
         .json({ error: "ticket id must be a non-negative integer" });
@@ -192,7 +192,7 @@ router.post(
   "/:id/tickets/:ticketId/notify",
   validateEventId,
   async (req: Request, res: Response, next: NextFunction) => {
-    if (!/^\d+$/.test(req.params.ticketId)) {
+    if (!/^\d+$/.test(String(req.params.ticketId))) {
       res
         .status(400)
         .json({ error: "ticket id must be a non-negative integer" });

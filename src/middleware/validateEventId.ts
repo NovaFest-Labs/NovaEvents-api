@@ -9,7 +9,7 @@ export function validateEventId(
   res: Response,
   next: NextFunction
 ): void {
-  if (!DECIMAL_INT_RE.test(req.params.id)) {
+  if (!DECIMAL_INT_RE.test(String(req.params.id))) {
     res.status(400).json({ error: "event id must be a non-negative integer" });
     return;
   }
