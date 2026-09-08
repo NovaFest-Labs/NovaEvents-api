@@ -17,15 +17,17 @@
     "@aws-sdk/client-s3": "^3.1118.0",
     "@aws-sdk/lib-storage": "^3.1118.0",
     "@stellar/stellar-sdk": "^15.1.0",
+    "better-sqlite3": "^12.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.2.0",
     "multer": "^2.2.0",
-    "better-sqlite3": "^12.10.0",
     "pino": "^8.20.0",
-    "pino-http": "^8.3.0"
+    "pino-http": "^8.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
@@ -34,6 +36,8 @@
     "@types/helmet": "^0.0.48",
     "@types/multer": "^1.4.13",
     "@types/node": "^25.9.1",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/yaml": "^1.9.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

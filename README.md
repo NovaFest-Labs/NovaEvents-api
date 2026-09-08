@@ -1,4 +1,42 @@
 
+# NovaEvents API
+
+Off-chain API for NovaEvents — notifications, indexing, and media for the Stellar event ticketing platform.
+
+## API Documentation
+
+The full API is documented as an OpenAPI 3.0 spec in [`openapi.yaml`](./openapi.yaml).
+
+When the server is running, an interactive Swagger UI is served at:
+
+```
+GET /api/docs
+```
+
+e.g. [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
+
+### Endpoints at a glance
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health check (RPC reachability, uptime) |
+| `GET` | `/api/admin` | Admin / operator info |
+| `GET` | `/api/events` | List all events (from local index) |
+| `GET` | `/api/events/:id` | Get a single event (live RPC) |
+| `GET` | `/api/events/:id/organizer` | Get event organizer |
+| `GET` | `/api/events/:id/status` | Get event status |
+| `GET` | `/api/events/:id/tiers` | Get ticket tiers |
+| `GET` | `/api/events/:id/ticket-count` | Get total ticket count |
+| `GET` | `/api/events/:id/sponsorships` | Get sponsorships |
+| `GET` | `/api/events/:id/payouts` | Get sponsor payouts |
+| `GET` | `/api/events/:id/sponsors/:address/share` | Get a sponsor's revenue share |
+| `GET` | `/api/events/:id/tickets/:ticketId` | Get a ticket |
+| `POST` | `/api/events/:id/tickets/:ticketId/notify` | Send ticket purchase confirmation email |
+| `POST` | `/api/events/:id/image` | Upload event cover image (organizer auth required) |
+| `GET` | `/api/docs` | Swagger UI (interactive API docs) |
+
+---
+
 ## Indexing and cached events
 
 To avoid the N+1 RPC fan-out on every `GET /api/events` request, the API maintains a lightweight local SQLite index of events and their ticket tiers.

@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import eventsRouter from "./routes/events";
+import docsRouter from "./routes/docs";
 import { errorHandler } from "./middleware/errorHandler";
 import { globalLimiter } from "./middleware/rateLimiter";
 import { getAdmin } from "./services/adminService";
@@ -63,6 +64,7 @@ app.get("/api/admin", async (_req, res, next) => {
 });
 
 app.use("/api/events", eventsRouter);
+app.use("/api/docs", docsRouter);
 app.use(errorHandler);
 
 // start background indexer (unless disabled)
