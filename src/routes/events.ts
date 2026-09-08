@@ -159,13 +159,13 @@ router.get(
   "/:id/tickets/:ticketId",
   validateEventId,
   async (req: Request, res: Response, next: NextFunction) => {
-    const ticketId = Number(req.params.ticketId);
-    if (!Number.isInteger(ticketId) || ticketId < 0) {
+    if (!/^\d+$/.test(req.params.ticketId)) {
       res
         .status(400)
         .json({ error: "ticket id must be a non-negative integer" });
       return;
     }
+    const ticketId = Number(req.params.ticketId);
     try {
       const id = Number(req.params.id);
       const ticket = await getTicketById(id, ticketId);
@@ -192,13 +192,13 @@ router.post(
   "/:id/tickets/:ticketId/notify",
   validateEventId,
   async (req: Request, res: Response, next: NextFunction) => {
-    const ticketId = Number(req.params.ticketId);
-    if (!Number.isInteger(ticketId) || ticketId < 0) {
+    if (!/^\d+$/.test(req.params.ticketId)) {
       res
         .status(400)
         .json({ error: "ticket id must be a non-negative integer" });
       return;
     }
+    const ticketId = Number(req.params.ticketId);
 
     const email = req.body?.email;
     if (typeof email !== "string" || !isValidEmail(email)) {
