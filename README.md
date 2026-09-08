@@ -1,4 +1,42 @@
 
+# NovaEvents API
+
+Off-chain API for NovaEvents — notifications, indexing, and media for the Stellar event ticketing platform.
+
+## API Documentation
+
+The full API is documented as an OpenAPI 3.0 spec in [`openapi.yaml`](./openapi.yaml).
+
+When the server is running, an interactive Swagger UI is served at:
+
+```
+GET /api/docs
+```
+
+e.g. [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
+
+### Endpoints at a glance
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health check (RPC reachability, uptime) |
+| `GET` | `/api/admin` | Admin / operator info |
+| `GET` | `/api/events` | List all events (from local index) |
+| `GET` | `/api/events/:id` | Get a single event (live RPC) |
+| `GET` | `/api/events/:id/organizer` | Get event organizer |
+| `GET` | `/api/events/:id/status` | Get event status |
+| `GET` | `/api/events/:id/tiers` | Get ticket tiers |
+| `GET` | `/api/events/:id/ticket-count` | Get total ticket count |
+| `GET` | `/api/events/:id/sponsorships` | Get sponsorships |
+| `GET` | `/api/events/:id/payouts` | Get sponsor payouts |
+| `GET` | `/api/events/:id/sponsors/:address/share` | Get a sponsor's revenue share |
+| `GET` | `/api/events/:id/tickets/:ticketId` | Get a ticket |
+| `POST` | `/api/events/:id/tickets/:ticketId/notify` | Send ticket purchase confirmation email |
+| `POST` | `/api/events/:id/image` | Upload event cover image (organizer auth required) |
+| `GET` | `/api/docs` | Swagger UI (interactive API docs) |
+
+---
+
 ## Indexing and cached events
 
 To avoid the N+1 RPC fan-out on every `GET /api/events` request, the API maintains a lightweight local SQLite index of events and their ticket tiers.
@@ -20,3 +58,52 @@ Configuration
 Rationale
 
 Storing a JSON snapshot per event keeps the implementation lightweight and easy to operate locally (no external DB). It avoids repeated RPC fan-out for list endpoints while still allowing single-item reads to be as fresh as possible.
+
+## Docker
+
+The repo ships with a multi-stage `Dockerfile` that produces a slim production image.
+
+### Build the image
+
+```bash
+docker build -t novaevents-api .
+```
+
+### Run the container
+
+Copy `.env.example` to `.env`, fill in your values, then:
+
+```bash
+docker run --rm \
+  --env-file .env \
+  -p 3001:3001 \
+  novaevents-api
+```
+
+The API will be available at [http://localhost:3001](http://localhost:3001).
+
+To persist the SQLite index across container restarts, mount a volume for the
+`data/` directory:
+
+```bash
+docker run --rm \
+  --env-file .env \
+  -p 3001:3001 \
+  -v "$(pwd)/data:/app/data" \
+  novaevents-api
+```
+
+### Required environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `STELLAR_RPC_URL` | Soroban RPC endpoint (e.g. `https://soroban-testnet.stellar.org`) |
+| `NOVA_EVENTS_CONTRACT_ID` | NovaEvents contract address on Stellar |
+
+### Optional environment variables
+
+See [`.env.example`](./.env.example) for the full list of optional variables
+(S3 credentials, email settings, indexer tuning, etc.).
+
+> **Never pass secrets via `docker build --build-arg`** — use `--env-file` or
+> your orchestrator's secrets manager at runtime.
