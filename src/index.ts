@@ -29,14 +29,12 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(globalLimiter);
-
-// request logging middleware — logs method, path, status, and latency
-app.use(requestLogger);
 
 const startedAt = Date.now();
 const RPC_HEALTH_TIMEOUT_MS = 3000;
 
+// Register /health BEFORE the global rate limiter so that load-balancer and
+// uptime-monitor probes are never throttled.
 app.get("/health", async (_req, res) => {
   const staticFields = {
     version: process.env.npm_package_version ?? "unknown",
@@ -52,6 +50,11 @@ app.get("/health", async (_req, res) => {
     res.status(503).json({ status: "error", rpcReachable, ...staticFields });
   }
 });
+
+app.use(globalLimiter);
+
+// request logging middleware — logs method, path, status, and latency
+app.use(requestLogger);
 
 app.get("/api/admin", async (_req, res, next) => {
   try {
