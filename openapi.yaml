@@ -1,0 +1,749 @@
+openapi: 3.0.3
+info:
+  title: NovaEvents API
+  description: |
+    Off-chain API for NovaEvents — notifications, indexing, and media for the
+    Stellar event ticketing platform.
+
+    ## Authentication
+
+    The image-upload endpoint (`POST /api/events/{id}/image`) requires the
+    caller to prove they control the event's on-chain organizer wallet by
+    including three headers derived from an ed25519 signature:
+
+    | Header | Description |
+    |--------|-------------|
+    | `x-organizer-address` | Organizer's Stellar public key (`G...`) |
+    | `x-organizer-timestamp` | Milliseconds since epoch when the signature was created (must be within 5 minutes of the server clock) |
+    | `x-organizer-signature` | Base64 ed25519 signature of the challenge string `novaevents:upload-image:<eventId>:<timestamp>` |
+  version: "1.0.0"
+  license:
+    name: ISC
+
+servers:
+  - url: /
+    description: Current host
+
+tags:
+  - name: health
+    description: Service health check
+  - name: events
+    description: Event data (read from on-chain indexer / Stellar RPC)
+  - name: tickets
+    description: Ticket lookup and purchase notifications
+  - name: sponsorships
+    description: Sponsorship and payout data
+  - name: media
+    description: Event cover-image upload
+  - name: admin
+    description: Admin / operator information
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Service health check
+      description: |
+        Returns the current health of the service including Stellar RPC
+        reachability, uptime, network, and contract ID.
+        Responds `503` when the RPC node cannot be reached.
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                rpcReachable: true
+                version: "1.0.0"
+                uptimeSeconds: 3600
+                network: https://soroban-testnet.stellar.org
+                contractId: CABTSQOXHOOAFFWBPDIXAPAL7KKV76WFL3WLGBUH6SLJ7R2BO5YNWKFU
+        "503":
+          description: Stellar RPC node is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: error
+                rpcReachable: false
+                version: "1.0.0"
+                uptimeSeconds: 120
+                network: https://soroban-testnet.stellar.org
+                contractId: CABTSQOXHOOAFFWBPDIXAPAL7KKV76WFL3WLGBUH6SLJ7R2BO5YNWKFU
+
+  /api/admin:
+    get:
+      tags: [admin]
+      summary: Get admin / operator info
+      description: Returns the on-chain admin address and associated metadata.
+      operationId: getAdmin
+      responses:
+        "200":
+          description: Admin information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  admin:
+                    type: object
+                    description: Admin metadata returned by the contract
+                    additionalProperties: true
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events:
+    get:
+      tags: [events]
+      summary: List all events
+      description: |
+        Returns all events from the local SQLite index. The index is refreshed
+        approximately every 30 seconds (configurable via `INDEX_SYNC_INTERVAL_MS`),
+        so results can be up to ~30 s behind on-chain state.
+      operationId: listEvents
+      responses:
+        "200":
+          description: Array of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+        "503":
+          description: Indexer is unavailable (disabled or not yet synced)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Events index is currently unavailable
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [events]
+      summary: Get a single event
+      description: |
+        Fetches a single event directly from the Stellar contract (live data,
+        not the local index).
+      operationId: getEvent
+      responses:
+        "200":
+          description: Event object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/organizer:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [events]
+      summary: Get event organizer
+      description: Returns the on-chain organizer wallet address for the event.
+      operationId: getEventOrganizer
+      responses:
+        "200":
+          description: Organizer data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerResponse"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/status:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [events]
+      summary: Get event status
+      description: Returns the current on-chain status of the event.
+      operationId: getEventStatus
+      responses:
+        "200":
+          description: Event status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventStatusResponse"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/tiers:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [events]
+      summary: Get ticket tiers for an event
+      description: Returns all ticket tiers (price, capacity, etc.) for the event.
+      operationId: getEventTiers
+      responses:
+        "200":
+          description: Array of ticket tiers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tier"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/ticket-count:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [events]
+      summary: Get total ticket count for an event
+      description: Returns the total number of tickets sold / issued for the event.
+      operationId: getEventTicketCount
+      responses:
+        "200":
+          description: Ticket count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketCountResponse"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/sponsorships:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [sponsorships]
+      summary: Get sponsorships for an event
+      description: Returns all sponsorships associated with the event.
+      operationId: getEventSponsorships
+      responses:
+        "200":
+          description: Array of sponsorships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sponsorship"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/payouts:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    get:
+      tags: [sponsorships]
+      summary: Get payouts for an event
+      description: Returns all sponsor payout records for the event.
+      operationId: getEventPayouts
+      responses:
+        "200":
+          description: Array of payouts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payout"
+        "400":
+          $ref: "#/components/responses/InvalidEventId"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/sponsors/{address}/share:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+      - name: address
+        in: path
+        required: true
+        description: Stellar public key of the sponsor (`G...`)
+        schema:
+          type: string
+          pattern: "^G[A-Z2-7]{55}$"
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+    get:
+      tags: [sponsorships]
+      summary: Get a sponsor's share for an event
+      description: |
+        Returns the sponsor's share in basis points (bps) for the given event.
+        1 bps = 0.01 %.
+      operationId: getSponsorShare
+      responses:
+        "200":
+          description: Sponsor share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SponsorShareResponse"
+        "400":
+          description: Invalid event ID or invalid Stellar address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidEventId:
+                  summary: Invalid event ID
+                  value:
+                    error: "event id must be a positive integer"
+                invalidAddress:
+                  summary: Invalid Stellar address
+                  value:
+                    error: "sponsor address is not a valid Stellar address"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/tickets/{ticketId}:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+      - $ref: "#/components/parameters/TicketId"
+    get:
+      tags: [tickets]
+      summary: Get a ticket
+      description: Returns ticket data for the given ticket ID within an event.
+      operationId: getTicket
+      responses:
+        "200":
+          description: Ticket object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "400":
+          description: Invalid event ID or ticket ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidEventId:
+                  summary: Invalid event ID
+                  value:
+                    error: "event id must be a positive integer"
+                invalidTicketId:
+                  summary: Invalid ticket ID
+                  value:
+                    error: "ticket id must be a non-negative integer"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/tickets/{ticketId}/notify:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+      - $ref: "#/components/parameters/TicketId"
+    post:
+      tags: [tickets]
+      summary: Send ticket purchase confirmation email
+      description: |
+        Sends a ticket-purchase confirmation email to the provided address.
+        Intended to be called by the client immediately after its on-chain
+        purchase transaction confirms.
+
+        Always responds `202` once the ticket is confirmed to exist — email
+        delivery is best-effort and failures do not surface as errors (the
+        on-chain purchase has already succeeded).
+      operationId: notifyTicketPurchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Recipient email address
+                  example: buyer@example.com
+      responses:
+        "202":
+          description: Notification accepted (email delivery is async / best-effort)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Acknowledgement payload (contents may vary)
+                additionalProperties: true
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidTicketId:
+                  summary: Invalid ticket ID
+                  value:
+                    error: "ticket id must be a non-negative integer"
+                invalidEmail:
+                  summary: Missing or invalid email
+                  value:
+                    error: "a valid email address is required"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events/{id}/image:
+    parameters:
+      - $ref: "#/components/parameters/EventId"
+    post:
+      tags: [media]
+      summary: Upload event cover image
+      description: |
+        Uploads a cover image for an event to S3-compatible object storage.
+
+        **Authentication** — the caller must prove they control the event's
+        on-chain organizer wallet by providing the three `x-organizer-*` headers
+        (see the Authentication section in the description above).
+
+        **Accepted formats**: JPEG, PNG, WebP, GIF  
+        **Max size**: 5 MB
+      operationId: uploadEventImage
+      security:
+        - OrganizerAuth: []
+      parameters:
+        - name: x-organizer-address
+          in: header
+          required: true
+          description: Organizer's Stellar public key (`G...`)
+          schema:
+            type: string
+            example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        - name: x-organizer-timestamp
+          in: header
+          required: true
+          description: Milliseconds since epoch when the signature was created
+          schema:
+            type: string
+            example: "1720000000000"
+        - name: x-organizer-signature
+          in: header
+          required: true
+          description: |
+            Base64 ed25519 signature of the challenge string
+            `novaevents:upload-image:<eventId>:<timestamp>`
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG, WebP, or GIF; max 5 MB)
+      responses:
+        "201":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    description: Public URL of the uploaded image
+                    example: https://cdn.example.com/events/42/cover.jpg
+        "400":
+          description: Validation or upload error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing organizer authentication headers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing organizer authentication headers (x-organizer-address, x-organizer-signature, x-organizer-timestamp)."
+        "403":
+          description: Caller is not the organizer, or signature is invalid / expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                wrongOrganizer:
+                  summary: Wrong organizer
+                  value:
+                    error: "Caller is not the organizer of this event."
+                badSignature:
+                  summary: Invalid signature
+                  value:
+                    error: "Invalid organizer signature."
+                expired:
+                  summary: Expired timestamp
+                  value:
+                    error: "Signature timestamp is missing, invalid, or expired."
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    EventId:
+      name: id
+      in: path
+      required: true
+      description: Numeric event ID (positive integer)
+      schema:
+        type: integer
+        minimum: 1
+        example: 42
+
+    TicketId:
+      name: ticketId
+      in: path
+      required: true
+      description: Numeric ticket ID (non-negative integer)
+      schema:
+        type: integer
+        minimum: 0
+        example: 0
+
+  responses:
+    InvalidEventId:
+      description: Event ID is not a valid positive integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "event id must be a positive integer"
+
+    InternalError:
+      description: Unexpected internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Internal server error"
+
+  securitySchemes:
+    OrganizerAuth:
+      type: apiKey
+      in: header
+      name: x-organizer-signature
+      description: |
+        Ed25519 signature proving ownership of the event's organizer wallet.
+        Must be accompanied by `x-organizer-address` and `x-organizer-timestamp`.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+    HealthResponse:
+      type: object
+      required: [status, rpcReachable, version, uptimeSeconds, network, contractId]
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+          description: "`ok` when RPC is reachable, `error` otherwise"
+        rpcReachable:
+          type: boolean
+          description: Whether the Stellar RPC node responded within the timeout
+        version:
+          type: string
+          description: API version from package.json
+          example: "1.0.0"
+        uptimeSeconds:
+          type: integer
+          description: Seconds since the process started
+          example: 3600
+        network:
+          type: string
+          description: Stellar RPC URL this instance is pointed at
+          example: https://soroban-testnet.stellar.org
+        contractId:
+          type: string
+          description: NovaEvents contract address on Stellar
+          example: CABTSQOXHOOAFFWBPDIXAPAL7KKV76WFL3WLGBUH6SLJ7R2BO5YNWKFU
+
+    Event:
+      type: object
+      description: |
+        On-chain event record. Numeric fields that exceed JavaScript's safe
+        integer range (e.g. USDC amounts in stroops) are serialized as strings.
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "Stellar Summit 2025"
+        organizer:
+          type: string
+          description: Organizer's Stellar public key
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        description:
+          type: string
+          example: "Annual Stellar developer conference"
+        location:
+          type: string
+          example: "San Francisco, CA"
+        date:
+          type: integer
+          description: Event start date as a Unix timestamp (seconds)
+          example: 1751234567
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://cdn.example.com/events/42/cover.jpg"
+      additionalProperties: true
+
+    OrganizerResponse:
+      type: object
+      description: Organizer data for an event
+      properties:
+        organizer:
+          type: string
+          description: Organizer's Stellar public key
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+      additionalProperties: true
+
+    EventStatusResponse:
+      type: object
+      description: Current on-chain status of the event
+      properties:
+        status:
+          type: string
+          description: Status variant returned by the contract
+          example: "Active"
+      additionalProperties: true
+
+    Tier:
+      type: object
+      description: Ticket tier for an event
+      properties:
+        tier_id:
+          type: integer
+          example: 0
+        name:
+          type: string
+          example: "General Admission"
+        price:
+          type: string
+          description: Price in USDC stroops (serialized as string to preserve precision)
+          example: "5000000"
+        capacity:
+          type: integer
+          example: 500
+        sold:
+          type: integer
+          example: 123
+      additionalProperties: true
+
+    TicketCountResponse:
+      type: object
+      description: Aggregate ticket count for an event
+      properties:
+        total_count:
+          type: integer
+          example: 123
+      additionalProperties: true
+
+    Ticket:
+      type: object
+      description: Individual ticket record
+      properties:
+        ticket_id:
+          type: integer
+          example: 0
+        event_id:
+          type: integer
+          example: 42
+        tier_id:
+          type: integer
+          example: 0
+        owner:
+          type: string
+          description: Owner's Stellar public key
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+      additionalProperties: true
+
+    Sponsorship:
+      type: object
+      description: Sponsorship record for an event
+      properties:
+        sponsor:
+          type: string
+          description: Sponsor's Stellar public key
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        amount:
+          type: string
+          description: Sponsored amount in USDC stroops (string)
+          example: "100000000"
+        share_bps:
+          type: integer
+          description: Sponsor's revenue share in basis points
+          example: 500
+      additionalProperties: true
+
+    Payout:
+      type: object
+      description: Payout record for a sponsor
+      properties:
+        sponsor:
+          type: string
+          description: Sponsor's Stellar public key
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        amount:
+          type: string
+          description: Paid-out amount in USDC stroops (string)
+          example: "50000000"
+      additionalProperties: true
+
+    SponsorShareResponse:
+      type: object
+      required: [event_id, sponsor, share_bps]
+      properties:
+        event_id:
+          type: integer
+          example: 42
+        sponsor:
+          type: string
+          description: Sponsor's Stellar public key
+          example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        share_bps:
+          type: integer
+          description: Sponsor's revenue share in basis points (1 bps = 0.01%)
+          example: 500
