@@ -1,0 +1,26 @@
+# Dependencies — reinstalled inside the image
+node_modules
+
+# Build output — produced inside the image
+dist
+
+# Environment files — never bake secrets into the image
+.env
+.env.*
+!.env.example
+
+# Local SQLite index
+data
+
+# Git and CI
+.git
+.github
+.gitignore
+
+# Editor / OS artifacts
+.DS_Store
+*.log
+npm-debug.log*
+
+# Test artefacts
+coverage
