@@ -17,7 +17,14 @@ import { logger } from "./lib/logger";
 // start indexer if enabled
 import { startIndexer } from "./services/indexer";
 
-const REQUIRED_ENV = ["STELLAR_RPC_URL", "NOVA_EVENTS_CONTRACT_ID"];
+const REQUIRED_ENV = [
+  "STELLAR_RPC_URL",
+  "NOVA_EVENTS_CONTRACT_ID",
+  // S3 credentials are required for the image-upload feature
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+  "S3_BUCKET_NAME",
+];
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length > 0) {
   logger.error({ missing }, `Missing required env vars: ${missing.join(", ")}`);
