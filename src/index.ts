@@ -1,7 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import express from "express";
+import http from "http";
+import net from "net";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import eventsRouter from "./routes/events";
@@ -73,8 +75,85 @@ app.use(errorHandler);
 // start background indexer (unless disabled)
 startIndexer();
 
-app.listen(PORT, () => {
-  logger.info({ port: PORT }, `NovaEvents API running`);
+// ---------------------------------------------------------------------------
+// Graceful shutdown
+// ---------------------------------------------------------------------------
+const SHUTDOWN_TIMEOUT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS) || 30_000;
+
+let activeRequests = 0;
+
+// Track in-flight requests so shutdown waits for them to complete.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  activeRequests++;
+  res.on("finish", () => {
+    activeRequests = Math.max(0, activeRequests - 1);
+  });
+  res.on("close", () => {
+    activeRequests = Math.max(0, activeRequests - 1);
+  });
+  next();
+});
+
+const server = http.createServer(app);
+
+// Track open sockets so we can force-close them on timeout.
+const sockets = new Set<net.Socket>();
+server.on("connection", (socket: net.Socket) => {
+  sockets.add(socket);
+  socket.on("close", () => sockets.delete(socket));
+});
+
+let shuttingDown = false;
+
+async function doShutdown(signal: string): Promise<void> {
+  if (shuttingDown) {
+    logger.info({ signal }, "graceful-shutdown: already in progress, ignoring duplicate signal");
+    return;
+  }
+  shuttingDown = true;
+  logger.info({ signal }, "graceful-shutdown: received signal, stopping new connections");
+
+  server.close((err?: Error) => {
+    if (err) logger.error({ err }, "graceful-shutdown: server.close error");
+  });
+
+  const start = Date.now();
+  const interval = 500;
+  const check = setInterval(() => {
+    logger.info({ activeRequests }, "graceful-shutdown: waiting for in-flight requests");
+    if (activeRequests === 0) {
+      clearInterval(check);
+      finish(0);
+    } else if (Date.now() - start >= SHUTDOWN_TIMEOUT_MS) {
+      clearInterval(check);
+      logger.warn({ count: sockets.size }, "graceful-shutdown: timeout reached, force-closing sockets");
+      for (const socket of sockets) {
+        try { socket.destroy(); } catch { /* ignore */ }
+      }
+      finish(1);
+    }
+  }, interval);
+
+  function finish(code: number): void {
+    logger.info({ code }, "graceful-shutdown: exiting");
+    setTimeout(() => process.exit(code), 10).unref();
+  }
+}
+
+process.on("SIGTERM", () => doShutdown("SIGTERM"));
+process.on("SIGINT",  () => doShutdown("SIGINT"));
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "uncaughtException");
+  doShutdown("uncaughtException");
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "unhandledRejection");
+});
+
+server.listen(PORT, () => {
+  logger.info({ port: PORT }, "NovaEvents API running");
 });
 
 export default app;
