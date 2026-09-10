@@ -25,10 +25,15 @@ import { sendTicketPurchaseConfirmation } from "../services/notificationService"
 
 const router = Router();
 
-router.get("/", eventsListLimiter, async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/", eventsListLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const organizer =
+      typeof req.query.organizer === "string" ? req.query.organizer : undefined;
     const events = await getAllEvents();
-    res.json(serializeBigInt(events));
+    const filtered = organizer
+      ? events.filter((e) => (e as Record<string, unknown>).organizer === organizer)
+      : events;
+    res.json(serializeBigInt(filtered.map(toEventSummary)));
   } catch (err) {
     if (err instanceof EventsUnavailableError) {
       res.status(503).json({ error: err.message });
@@ -44,8 +49,21 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
-      const event = await getEventById(id);
-      res.json(serializeBigInt(event));
+      const [event, tiers, sponsorships] = await Promise.all([
+        getEventById(id),
+        getTiersByEventId(id),
+        getSponsorshipsByEventId(id),
+      ]);
+      res.json(
+        serializeBigInt(
+          toEventDetail(
+            id,
+            event as Record<string, unknown>,
+            tiers as Array<Record<string, unknown>>,
+            sponsorships as Array<{ sponsor: unknown; amount: unknown }>
+          )
+        )
+      );
     } catch (err) {
       next(err);
     }
@@ -262,6 +280,72 @@ router.post(
     }
   }
 );
+
+function normalizeStatus(status: unknown): string {
+  if (Array.isArray(status) && typeof status[0] === "string") return status[0];
+  return typeof status === "string" ? status : String(status);
+}
+
+function toDateIso(dateUnix: unknown): string {
+  const seconds = Number(dateUnix);
+  return new Date(seconds * 1000).toISOString();
+}
+
+/**
+ * Maps a raw on-chain event (as returned by getAllEvents, keyed by the
+ * contract's own field names) to the summary view the events list and
+ * organizer dashboard expect.
+ */
+function toEventSummary(raw: unknown): Record<string, unknown> {
+  const event = raw as Record<string, unknown>;
+  const tiers = (event.tiers as Array<{ tickets_sold?: number }>) ?? [];
+  return {
+    id: event.id,
+    name: event.name,
+    venue: event.venue,
+    date: toDateIso(event.date_unix),
+    funding_goal: event.funding_goal,
+    current_balance: event.balance,
+    tier_count: tiers.length,
+    tickets_sold: tiers.reduce((sum, t) => sum + (t.tickets_sold ?? 0), 0),
+    organizer: event.organizer,
+  };
+}
+
+/**
+ * Maps a raw on-chain event + tiers + sponsorships to the detail view the
+ * event detail page expects.
+ */
+function toEventDetail(
+  id: number,
+  event: Record<string, unknown>,
+  tiers: Array<Record<string, unknown>>,
+  sponsorships: Array<{ sponsor: unknown; amount: unknown }>
+): Record<string, unknown> {
+  return {
+    id,
+    name: event.name,
+    description: event.description,
+    venue: event.venue,
+    date: toDateIso(event.date_unix),
+    organizer_address: event.organizer,
+    funding_goal: event.funding_goal,
+    current_balance: event.balance,
+    status: normalizeStatus(event.status),
+    image_url: event.image_url,
+    tiers: tiers.map((tier, i) => ({
+      id: String(i),
+      name: tier.name,
+      price: tier.price,
+      supply_cap: tier.supply_cap,
+      tickets_sold: tier.tickets_sold,
+    })),
+    sponsorships: sponsorships.map((s) => ({
+      sponsor_address: s.sponsor,
+      amount: s.amount,
+    })),
+  };
+}
 
 function serializeBigInt(value: unknown): unknown {
   if (typeof value === "bigint") return value.toString();
