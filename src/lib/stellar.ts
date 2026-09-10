@@ -14,7 +14,7 @@ const contract = new Contract(config.contractId);
 
 // Dummy source — simulation does not require a funded account.
 const DUMMY_SOURCE = new Account(
-  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN",
+  "GA2YUM6II2GMTQGUQELKZAFTK6GENPUR7GFDRTRVYBKOPDBKTINRG7XE",
   "0"
 );
 

@@ -1,7 +1,9 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import eventsRouter from "./routes/events";
 import docsRouter from "./routes/docs";
 import { errorHandler } from "./middleware/errorHandler";
@@ -14,8 +16,6 @@ import { logger } from "./lib/logger";
 
 // start indexer if enabled
 import { startIndexer } from "./services/indexer";
-
-dotenv.config();
 
 const REQUIRED_ENV = ["STELLAR_RPC_URL", "NOVA_EVENTS_CONTRACT_ID"];
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
