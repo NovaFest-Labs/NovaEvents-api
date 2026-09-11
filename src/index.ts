@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import http from "http";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -13,6 +14,7 @@ import { rpcServer } from "./lib/stellar";
 import { checkRpcHealth } from "./lib/rpcHealth";
 import { requestLogger } from "./middleware/logger";
 import { logger } from "./lib/logger";
+import { setupGracefulShutdown } from "./gracefulShutdown";
 
 // start indexer if enabled
 import { startIndexer } from "./services/indexer";
@@ -73,7 +75,15 @@ app.use(errorHandler);
 // start background indexer (unless disabled)
 startIndexer();
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+
+setupGracefulShutdown({
+  server,
+  app,
+  timeoutMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || 30_000,
+});
+
+server.listen(PORT, () => {
   logger.info({ port: PORT }, `NovaEvents API running`);
 });
 
