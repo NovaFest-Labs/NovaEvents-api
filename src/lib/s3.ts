@@ -7,16 +7,21 @@ import { Readable } from "stream";
  * Works with any S3-compatible provider (AWS S3, Cloudflare R2, MinIO, etc.)
  * by setting S3_ENDPOINT to the provider's endpoint URL.
  */
+
+// Read S3_REGION once so the client and the public URL builder always use the
+// same value. Defaults to "auto" (the R2/S3-compatible convention documented
+// in .env.example); set S3_REGION to your bucket's region when targeting AWS.
+const REGION = process.env.S3_REGION ?? "auto";
+
 let _client: S3Client | null = null;
 
 export function getS3Client(): S3Client {
   if (_client) return _client;
 
-  const region = process.env.S3_REGION ?? "auto";
   const endpoint = process.env.S3_ENDPOINT; // optional — leave unset for AWS
 
   _client = new S3Client({
-    region,
+    region: REGION,
     ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID!,
@@ -63,10 +68,9 @@ export async function uploadToS3(
   // For AWS S3: https://<bucket>.s3.<region>.amazonaws.com/<key>
   // For R2/custom endpoints: <endpoint>/<bucket>/<key>
   const endpoint = process.env.S3_ENDPOINT;
-  const region = process.env.S3_REGION ?? "us-east-1";
   const publicUrl = endpoint
     ? `${endpoint.replace(/\/$/, "")}/${bucket}/${key}`
-    : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    : `https://${bucket}.s3.${REGION}.amazonaws.com/${key}`;
 
   return { url: publicUrl, key };
 }
