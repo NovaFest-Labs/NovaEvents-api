@@ -4,16 +4,17 @@ Thanks for your interest in contributing.
 
 ## Setup#
 
+## Setup
+
 1. Fork and clone this repository.
 
 2. Install the dependencies:
 
    ```bash
    npm install
-   
-cp .env.example .env
-Copy-Item .env.example .env
-npm test
+   cp .env.example .env
+   Copy-Item .env.example .env
+   npm test
 npm run build
 npm run dev
 
