@@ -15,6 +15,7 @@ import {
   EventNotFoundError,
   TicketNotFoundError,
   EventsUnavailableError,
+  InvalidSponsorAddressError,
 } from "./eventsService";
 
 vi.mock("../lib/stellar", () => ({
@@ -429,5 +430,12 @@ describe("getSponsorShare", () => {
     });
 
     await expect(getSponsorShare(0, SPONSOR)).rejects.toBe(rpcFailure);
+  });
+
+  it("throws InvalidSponsorAddressError for a malformed sponsor address instead of a raw SDK error", async () => {
+    await expect(getSponsorShare(0, "not-a-real-address")).rejects.toBeInstanceOf(
+      InvalidSponsorAddressError
+    );
+    expect(simulateContractCall).not.toHaveBeenCalled();
   });
 });

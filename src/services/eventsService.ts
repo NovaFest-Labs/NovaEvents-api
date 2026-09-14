@@ -1,6 +1,14 @@
 import { Address, xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
 import { getEventImageUrl } from "../lib/imageStore";
+import { isValidStellarAddress } from "../lib/validation";
+
+export class InvalidSponsorAddressError extends Error {
+  constructor(public readonly sponsorAddress: string) {
+    super(`"${sponsorAddress}" is not a valid Stellar address`);
+    this.name = "InvalidSponsorAddressError";
+  }
+}
 
 export class EventNotFoundError extends Error {
   constructor(public readonly eventId: number) {
@@ -167,6 +175,10 @@ export async function getSponsorShare(
   eventId: number,
   sponsorAddress: string
 ): Promise<number> {
+  if (!isValidStellarAddress(sponsorAddress)) {
+    throw new InvalidSponsorAddressError(sponsorAddress);
+  }
+
   await getEventById(eventId);
 
   return (await simulateContractCall(
