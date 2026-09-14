@@ -1,6 +1,8 @@
 import { Networks } from "@stellar/stellar-sdk";
 
 const config = {
+  // Non-null assertions are safe because src/index.ts validates REQUIRED_ENV
+  // (including STELLAR_RPC_URL and NOVA_EVENTS_CONTRACT_ID) at startup and exits if missing.
   stellarRpcUrl: process.env.STELLAR_RPC_URL!,
   contractId: process.env.NOVA_EVENTS_CONTRACT_ID!,
   networkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE ?? Networks.TESTNET,
