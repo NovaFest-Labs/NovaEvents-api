@@ -46,6 +46,12 @@ export async function uploadEventImage(
     );
   }
 
+  if (sniffImageType(file.buffer) !== file.mimetype) {
+    throw new ImageValidationError(
+      "File content doesn't match its declared type."
+    );
+  }
+
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
     throw new ImageValidationError(
       `File too large (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum allowed size is 5 MB.`
@@ -65,6 +71,55 @@ export async function uploadEventImage(
   setEventImageUrl(eventId, result.url);
 
   return result;
+}
+
+/**
+ * Identifies an image's actual MIME type from its magic bytes, ignoring
+ * whatever `Content-Type` the client claimed. Returns null if the buffer
+ * doesn't match any type this service accepts.
+ */
+function sniffImageType(buffer: Buffer): string | null {
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  if (
+    buffer.length >= 6 &&
+    buffer.subarray(0, 3).toString("ascii") === "GIF" &&
+    (buffer.subarray(3, 6).toString("ascii") === "87a" ||
+      buffer.subarray(3, 6).toString("ascii") === "89a")
+  ) {
+    return "image/gif";
+  }
+
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+
+  return null;
 }
 
 function mimeToExt(mime: string): string {
