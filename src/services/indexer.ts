@@ -1,4 +1,4 @@
-import db from "../lib/db";
+import { getDb } from "../lib/db";
 import { xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
 
@@ -19,7 +19,7 @@ export async function runIndexOnce(): Promise<void> {
         ]);
         const payload = { id, ...(event as object), tiers };
         const json = safeStringify(payload);
-        const stmt = db.prepare(
+        const stmt = getDb().prepare(
           "INSERT INTO events_index (id, payload, updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at"
         );
         stmt.run(id, json, Date.now());
