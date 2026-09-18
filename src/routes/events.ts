@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { validateEventId } from "../middleware/validateEventId";
 import { eventsListLimiter } from "../middleware/rateLimiter";
-import { uploadImage } from "../middleware/uploadImage";
+import { uploadImage, formatUploadImageError } from "../middleware/uploadImage";
 import { verifyOrganizer } from "../middleware/verifyOrganizer";
 import { isValidStellarAddress, isValidEmail } from "../lib/validation";
 import {
@@ -256,7 +256,7 @@ router.post(
     // Run multer as a callback so we can forward its errors to errorHandler
     uploadImage(req, res, (err) => {
       if (err) {
-        res.status(400).json({ error: err.message });
+        res.status(400).json({ error: formatUploadImageError(err) });
         return;
       }
       next();

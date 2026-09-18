@@ -3,6 +3,19 @@ import { MAX_IMAGE_SIZE_BYTES, ALLOWED_MIME_TYPES } from "../services/imageServi
 import { Request } from "express";
 
 /**
+ * Reformats a multer upload error to match imageService's friendly message
+ * style. Multer's own LIMIT_FILE_SIZE error ("File too large") would
+ * otherwise reach the client with a different shape than the equivalent
+ * error imageService produces for the same condition.
+ */
+export function formatUploadImageError(err: unknown): string {
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return `File too large. Maximum allowed size is ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024} MB.`;
+  }
+  return err instanceof Error ? err.message : "Upload failed.";
+}
+
+/**
  * Multer middleware that accepts a single "image" field.
  * Uses memory storage so the buffer is available for direct S3 streaming
  * without writing to disk.
