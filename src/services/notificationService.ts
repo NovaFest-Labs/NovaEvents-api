@@ -1,4 +1,5 @@
 import { sendEmail } from "../lib/email";
+import { logger } from "../lib/logger";
 import { getTicketById, TicketNotFoundError } from "./eventsService";
 
 export { TicketNotFoundError };
@@ -34,9 +35,9 @@ export async function sendTicketPurchaseConfirmation(
     });
     return { delivered: true };
   } catch (err) {
-    console.error(
-      `Failed to send ticket confirmation email for event ${eventId}, ticket ${ticketId}:`,
-      err instanceof Error ? err.message : err
+    logger.error(
+      { eventId, ticketId, err },
+      "Failed to send ticket confirmation email"
     );
     return { delivered: false, error: err instanceof Error ? err.message : String(err) };
   }

@@ -1,6 +1,7 @@
 import { getDb } from "../lib/db";
 import { xdr } from "@stellar/stellar-sdk";
 import { simulateContractCall } from "../lib/stellar";
+import { logger } from "../lib/logger";
 import type Database from "better-sqlite3";
 
 const DEFAULT_INTERVAL = Number(process.env.INDEX_SYNC_INTERVAL_MS) || 30000;
@@ -29,13 +30,11 @@ export async function runIndexOnce(): Promise<void> {
         upsertStmt.run(id, json, Date.now());
       } catch (err) {
         // If a single event fails to index, skip it but continue indexing others
-        // eslint-disable-next-line no-console
-        console.error(`failed to index event ${id}:`, err instanceof Error ? err.message : err);
+        logger.error({ id, err }, "failed to index event");
       }
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("failed to run indexer:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "failed to run indexer");
     throw err;
   }
 }
@@ -44,8 +43,7 @@ let intervalHandle: NodeJS.Timeout | null = null;
 
 export function startIndexer(): void {
   if (process.env.INDEXER_DISABLED && (process.env.INDEXER_DISABLED === "1" || process.env.INDEXER_DISABLED.toLowerCase() === "true")) {
-    // eslint-disable-next-line no-console
-    console.info("indexer disabled by INDEXER_DISABLED");
+    logger.info("indexer disabled by INDEXER_DISABLED");
     return;
   }
 
@@ -57,8 +55,7 @@ export function startIndexer(): void {
   intervalHandle = setInterval(() => {
     runIndexOnce().catch(() => {});
   }, ms);
-  // eslint-disable-next-line no-console
-  console.info(`indexer started, interval=${ms}ms`);
+  logger.info({ intervalMs: ms }, "indexer started");
 }
 
 export function stopIndexer(): void {
