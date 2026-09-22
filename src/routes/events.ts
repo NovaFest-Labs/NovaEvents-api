@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { validateEventId } from "../middleware/validateEventId";
-import { eventsListLimiter } from "../middleware/rateLimiter";
+import { eventsListLimiter, notifyLimiter } from "../middleware/rateLimiter";
 import { uploadImage, formatUploadImageError } from "../middleware/uploadImage";
 import { verifyOrganizer } from "../middleware/verifyOrganizer";
 import { isValidStellarAddress, isValidEmail } from "../lib/validation";
@@ -208,6 +208,7 @@ router.get(
  */
 router.post(
   "/:id/tickets/:ticketId/notify",
+  notifyLimiter,
   validateEventId,
   async (req: Request, res: Response, next: NextFunction) => {
     if (!/^\d+$/.test(String(req.params.ticketId))) {

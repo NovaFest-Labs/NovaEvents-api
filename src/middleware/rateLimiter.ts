@@ -30,3 +30,20 @@ export const eventsListLimiter = rateLimit({
       "Too many requests to the events list endpoint, please try again later.",
   },
 });
+
+/**
+ * Stricter rate limit for the ticket-notify endpoint.
+ * A legitimate client calls this once per purchase, so a low limit keeps it
+ * usable for real traffic while making it impractical to spam an arbitrary
+ * email address by guessing event/ticket id pairs.
+ * 10 requests per IP per 15-minute window.
+ */
+export const notifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    error: "Too many notification requests, please try again later.",
+  },
+});
