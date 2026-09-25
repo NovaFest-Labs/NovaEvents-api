@@ -9,7 +9,7 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   // Log structured error with stack when available
-  logger.error({ err: { message: err.message, stack: (err as any).stack } }, "Unhandled error");
+  logger.error({ err: { message: err.message, stack: err.stack } }, "Unhandled error");
 
   if (err instanceof EventNotFoundError || err instanceof TicketNotFoundError) {
     res.status(404).json({ error: err.message });
