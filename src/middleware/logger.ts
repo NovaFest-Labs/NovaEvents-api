@@ -1,18 +1,20 @@
 import pinoHttp from "pino-http";
+import { Request, Response } from "express";
 import { logger } from "../lib/logger";
 
-export const requestLogger = pinoHttp({
+export const requestLogger = pinoHttp<Request, Response>({
   logger,
   customLogLevel: function (res, err) {
     // pino-http passes the response object and optional error
-    if ((res && (res as any).statusCode >= 500) || err) return "error";
-    if (res && (res as any).statusCode >= 400) return "warn";
+    const statusCode = res?.statusCode ?? 0;
+    if (statusCode >= 500 || err) return "error";
+    if (statusCode >= 400) return "warn";
     return "info";
   },
-  customProps: function (req, res) {
+  customProps: function (req) {
     return {
       method: req.method,
-      path: (req as any).originalUrl || req.url,
+      path: req.originalUrl || req.url,
     };
   },
 });
