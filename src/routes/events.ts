@@ -3,6 +3,7 @@ import { validateEventId } from "../middleware/validateEventId";
 import { eventsListLimiter, notifyLimiter } from "../middleware/rateLimiter";
 import { uploadImage, formatUploadImageError } from "../middleware/uploadImage";
 import { verifyOrganizer } from "../middleware/verifyOrganizer";
+import { verifyTicketOwner } from "../middleware/verifyTicketOwner";
 import { isValidStellarAddress, isValidEmail } from "../lib/validation";
 import {
   getEventById,
@@ -202,6 +203,9 @@ router.get(
  *
  * Body: { "email": string }
  *
+ * Requires proof that the caller controls the ticket's on-chain owner
+ * wallet — see verifyTicketOwner for the required headers.
+ *
  * Always responds 202 once the ticket is confirmed to exist — email
  * delivery is best-effort and its failure must never surface as an error
  * for the (already-succeeded) on-chain purchase it's confirming.
@@ -210,6 +214,7 @@ router.post(
   "/:id/tickets/:ticketId/notify",
   notifyLimiter,
   validateEventId,
+  verifyTicketOwner,
   async (req: Request, res: Response, next: NextFunction) => {
     if (!/^\d+$/.test(String(req.params.ticketId))) {
       res

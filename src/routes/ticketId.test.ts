@@ -34,6 +34,13 @@ vi.mock("../services/notificationService", () => ({
   sendTicketPurchaseConfirmation: vi.fn().mockResolvedValue({ sent: true }),
 }));
 
+// Ticket-owner auth is covered by its own dedicated test file
+// (verifyTicketOwner.test.ts) — bypass it here so these tests stay focused
+// on ticket id validation only.
+vi.mock("../middleware/verifyTicketOwner", () => ({
+  verifyTicketOwner: (_req: Request, _res: Response, next: NextFunction) => next(),
+}));
+
 import eventsRouter from "./events";
 
 function buildApp() {

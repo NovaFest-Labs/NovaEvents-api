@@ -15,6 +15,12 @@ vi.mock("../services/notificationService", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../services/notificationService")>();
   return { ...actual, sendTicketPurchaseConfirmation: vi.fn() };
 });
+// Ticket-owner auth is covered by its own dedicated test file
+// (verifyTicketOwner.test.ts) — bypass it here so these tests stay focused
+// on the route's own validation and response behavior.
+vi.mock("../middleware/verifyTicketOwner", () => ({
+  verifyTicketOwner: (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
 
 import { sendTicketPurchaseConfirmation } from "../services/notificationService";
 import { TicketNotFoundError } from "../services/eventsService";
