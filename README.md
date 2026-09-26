@@ -55,6 +55,7 @@ Configuration
 | `INDEX_DB_PATH` | `./data/index.db` | File path for the SQLite index database |
 | `INDEX_SYNC_INTERVAL_MS` | `30000` | Poll interval for the background indexer, in milliseconds |
 | `INDEXER_DISABLED` | unset | Set to `1` or `true` to disable the indexer on startup |
+| `SHUTDOWN_TIMEOUT_MS` | `30000` | Milliseconds to wait for in-flight requests to finish on SIGTERM/SIGINT before force-closing remaining sockets |
 
 ## Docker
 
