@@ -1,9 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { Keypair } from "@stellar/stellar-sdk";
 import { getTicketById } from "../services/eventsService";
-
-/** Signatures older than this are rejected, so a captured header can't be replayed later. */
-export const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000;
+import { SIGNATURE_MAX_AGE_MS } from "../lib/signatureAuth";
 
 export class TicketOwnerAuthError extends Error {
   status: number;
