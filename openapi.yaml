@@ -16,6 +16,16 @@ info:
     | `x-organizer-address` | Organizer's Stellar public key (`G...`) |
     | `x-organizer-timestamp` | Milliseconds since epoch when the signature was created (must be within 5 minutes of the server clock) |
     | `x-organizer-signature` | Base64 ed25519 signature of the challenge string `novaevents:upload-image:<eventId>:<timestamp>` |
+
+    The notify endpoint (`POST /api/events/{id}/tickets/{ticketId}/notify`)
+    uses the same pattern to require proof that the caller controls the
+    ticket's on-chain owner wallet:
+
+    | Header | Description |
+    |--------|-------------|
+    | `x-owner-address` | Ticket owner's Stellar public key (`G...`) |
+    | `x-owner-timestamp` | Milliseconds since epoch when the signature was created (must be within 5 minutes of the server clock) |
+    | `x-owner-signature` | Base64 ed25519 signature of the challenge string `novaevents:notify:<eventId>:<ticketId>:<timestamp>` |
   version: "1.0.0"
   license:
     name: ISC
@@ -366,7 +376,37 @@ paths:
         Always responds `202` once the ticket is confirmed to exist — email
         delivery is best-effort and failures do not surface as errors (the
         on-chain purchase has already succeeded).
+
+        **Authentication** — the caller must prove they control the ticket's
+        on-chain owner wallet by providing the three `x-owner-*` headers
+        (see the Authentication section in the description above). Also
+        subject to a dedicated, stricter rate limit than the rest of the API.
       operationId: notifyTicketPurchase
+      security:
+        - TicketOwnerAuth: []
+      parameters:
+        - name: x-owner-address
+          in: header
+          required: true
+          description: Ticket owner's Stellar public key (`G...`)
+          schema:
+            type: string
+            example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+        - name: x-owner-timestamp
+          in: header
+          required: true
+          description: Milliseconds since epoch when the signature was created
+          schema:
+            type: string
+            example: "1720000000000"
+        - name: x-owner-signature
+          in: header
+          required: true
+          description: |
+            Base64 ed25519 signature of the challenge string
+            `novaevents:notify:<eventId>:<ticketId>:<timestamp>`
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -404,6 +444,48 @@ paths:
                   summary: Missing or invalid email
                   value:
                     error: "a valid email address is required"
+        "401":
+          description: Missing ticket-owner authentication headers, or expired signature timestamp
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missingHeaders:
+                  summary: Missing headers
+                  value:
+                    error: "Missing ticket-owner authentication headers (x-owner-address, x-owner-signature, x-owner-timestamp)."
+                expired:
+                  summary: Expired timestamp
+                  value:
+                    error: "Signature timestamp is missing, invalid, or expired."
+        "403":
+          description: Caller is not the ticket's owner, or signature is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                wrongOwner:
+                  summary: Wrong owner
+                  value:
+                    error: "Caller is not the owner of this ticket."
+                badSignature:
+                  summary: Invalid signature
+                  value:
+                    error: "Invalid ticket-owner signature."
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many notification requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -559,6 +641,13 @@ components:
       description: |
         Ed25519 signature proving ownership of the event's organizer wallet.
         Must be accompanied by `x-organizer-address` and `x-organizer-timestamp`.
+    TicketOwnerAuth:
+      type: apiKey
+      in: header
+      name: x-owner-signature
+      description: |
+        Ed25519 signature proving ownership of the ticket's owner wallet.
+        Must be accompanied by `x-owner-address` and `x-owner-timestamp`.
 
   schemas:
     ErrorResponse:
