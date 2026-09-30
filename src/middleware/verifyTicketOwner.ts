@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { Keypair } from "@stellar/stellar-sdk";
 import { getTicketById } from "../services/eventsService";
-import { SIGNATURE_MAX_AGE_MS } from "../lib/signatureAuth";
+import { SIGNATURE_MAX_AGE_MS, verifyEd25519Signature } from "../lib/signatureAuth";
 
 export class TicketOwnerAuthError extends Error {
   status: number;
@@ -75,17 +74,7 @@ export async function verifyTicketOwner(
     }
 
     const message = buildNotifyChallengeMessage(eventId, ticketId, timestamp);
-    let verified: boolean;
-    try {
-      verified = Keypair.fromPublicKey(address).verify(
-        Buffer.from(message),
-        Buffer.from(signature, "base64")
-      );
-    } catch {
-      verified = false;
-    }
-
-    if (!verified) {
+    if (!verifyEd25519Signature(address, message, signature)) {
       throw new TicketOwnerAuthError("Invalid ticket-owner signature.", 403);
     }
 
