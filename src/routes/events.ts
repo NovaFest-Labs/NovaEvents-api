@@ -30,6 +30,10 @@ router.get("/", eventsListLimiter, async (req: Request, res: Response, next: Nex
   try {
     const organizer =
       typeof req.query.organizer === "string" ? req.query.organizer : undefined;
+    if (organizer !== undefined && !isValidStellarAddress(organizer)) {
+      res.status(400).json({ error: "Invalid organizer address" });
+      return;
+    }
     const events = await getAllEvents();
     const filtered = organizer
       ? events.filter((e) => (e as Record<string, unknown>).organizer === organizer)
