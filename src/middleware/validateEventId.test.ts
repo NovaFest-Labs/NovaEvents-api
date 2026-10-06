@@ -85,4 +85,30 @@ describe("validateEventId", () => {
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(400);
   });
+
+  it("calls next() for the largest valid u32 (4294967295)", () => {
+    const next = vi.fn() as unknown as NextFunction;
+    const res = fakeRes();
+    validateEventId(fakeReq("4294967295"), res, next);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an id past the contract's u32 range with 400 instead of reaching the RPC layer", () => {
+    // event_id is a u32 on-chain; one past its max would otherwise reach
+    // simulateContractCall and fail with a raw "XDR Write Error" leaking
+    // out as an unhandled 500 instead of a clean 400.
+    const next = vi.fn() as unknown as NextFunction;
+    const res = fakeRes();
+    validateEventId(fakeReq("4294967296"), res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects an astronomically large id with 400", () => {
+    const next = vi.fn() as unknown as NextFunction;
+    const res = fakeRes();
+    validateEventId(fakeReq("99999999999999999999"), res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(400);
+  });
 });
