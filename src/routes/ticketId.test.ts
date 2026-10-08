@@ -82,6 +82,15 @@ describe("GET /api/events/:id/tickets/:ticketId — ticket id validation", () =>
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/ticket id/i);
   });
+
+  it("rejects a ticket id past the contract's u32 range with 400", async () => {
+    // ticket_id is a u32 on-chain. One past its max would otherwise reach
+    // simulateContractCall and fail with a raw "XDR Write Error" leaking
+    // out as an unhandled 500 instead of a clean 400.
+    const res = await request(app).get("/api/events/1/tickets/4294967296");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/ticket id/i);
+  });
 });
 
 describe("POST /api/events/:id/tickets/:ticketId/notify — ticket id validation", () => {
@@ -121,6 +130,14 @@ describe("POST /api/events/:id/tickets/:ticketId/notify — ticket id validation
   it("rejects a negative number (-1) with 400", async () => {
     const res = await request(app)
       .post("/api/events/1/tickets/-1/notify")
+      .send({ email: "user@example.com" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/ticket id/i);
+  });
+
+  it("rejects a ticket id past the contract's u32 range with 400", async () => {
+    const res = await request(app)
+      .post("/api/events/1/tickets/4294967296/notify")
       .send({ email: "user@example.com" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/ticket id/i);

@@ -199,4 +199,31 @@ describe("verifyTicketOwner", () => {
     expect(mockGetTicketById).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledOnce();
   });
+
+  it("defers to downstream validation for a ticket id past u32::MAX instead of looking it up", async () => {
+    // ticket_id is a u32 on-chain. Looking this up would otherwise reach
+    // simulateContractCall and fail with a raw "XDR Write Error" instead
+    // of the clean 400 the route's own id validation produces.
+    const keypair = Keypair.random();
+    const eventId = 1;
+    const ticketId = 4294967296; // one past u32::MAX
+    const timestamp = Date.now();
+    const message = buildNotifyChallengeMessage(eventId, ticketId, timestamp);
+    const signature = keypair.sign(Buffer.from(message)).toString("base64");
+
+    const req = fakeReq({
+      eventId: String(eventId),
+      ticketId: String(ticketId),
+      address: keypair.publicKey(),
+      signature,
+      timestamp: String(timestamp),
+    });
+    const res = fakeRes();
+    const next = vi.fn();
+
+    await verifyTicketOwner(req, res, next);
+
+    expect(mockGetTicketById).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledOnce();
+  });
 });

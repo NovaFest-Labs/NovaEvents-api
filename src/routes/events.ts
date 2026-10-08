@@ -4,7 +4,7 @@ import { eventsListLimiter, notifyLimiter } from "../middleware/rateLimiter";
 import { uploadImage, formatUploadImageError } from "../middleware/uploadImage";
 import { verifyOrganizer } from "../middleware/verifyOrganizer";
 import { verifyTicketOwner } from "../middleware/verifyTicketOwner";
-import { isValidStellarAddress, isValidEmail } from "../lib/validation";
+import { isValidStellarAddress, isValidEmail, isValidU32Id } from "../lib/validation";
 import {
   getEventById,
   getEventOrganizerById,
@@ -178,7 +178,7 @@ router.get(
   "/:id/tickets/:ticketId",
   validateEventId,
   async (req: Request, res: Response, next: NextFunction) => {
-    if (!/^\d+$/.test(String(req.params.ticketId))) {
+    if (!isValidU32Id(String(req.params.ticketId))) {
       res
         .status(400)
         .json({ error: "ticket id must be a non-negative integer" });
@@ -216,7 +216,7 @@ router.post(
   validateEventId,
   verifyTicketOwner,
   async (req: Request, res: Response, next: NextFunction) => {
-    if (!/^\d+$/.test(String(req.params.ticketId))) {
+    if (!isValidU32Id(String(req.params.ticketId))) {
       res
         .status(400)
         .json({ error: "ticket id must be a non-negative integer" });

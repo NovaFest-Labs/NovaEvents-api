@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { getTicketById } from "../services/eventsService";
 import { SIGNATURE_MAX_AGE_MS, verifyEd25519Signature } from "../lib/signatureAuth";
+import { isValidU32Id } from "../lib/validation";
 
 export class TicketOwnerAuthError extends Error {
   status: number;
@@ -35,8 +36,9 @@ export function buildNotifyChallengeMessage(
  * The address is cross-checked against the ticket's on-chain owner
  * (get_ticket) so a valid signature from the wrong wallet is still rejected.
  *
- * A non-numeric ticketId is passed through to next() unauthenticated —
- * the route's own id validation rejects it with a clearer 400 before this
+ * A ticketId that isn't a valid u32 (non-numeric, negative, or past the
+ * contract's u32 range) is passed through to next() unauthenticated — the
+ * route's own id validation rejects it with a clearer 400 before this
  * middleware's failure mode would otherwise apply.
  */
 export async function verifyTicketOwner(
@@ -46,7 +48,7 @@ export async function verifyTicketOwner(
 ): Promise<void> {
   try {
     const ticketId = Number(req.params.ticketId);
-    if (!/^\d+$/.test(String(req.params.ticketId))) {
+    if (!isValidU32Id(String(req.params.ticketId))) {
       next();
       return;
     }
