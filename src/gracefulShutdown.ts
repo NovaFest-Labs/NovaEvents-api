@@ -17,16 +17,18 @@ export function setupGracefulShutdown(opts: GracefulOptions) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     activeRequests++;
     const start = Date.now();
-    res.on('finish', () => {
-      activeRequests = Math.max(0, activeRequests - 1);
+    // Node emits both 'finish' and 'close' for a normally completed response
+    // (only 'close' for an aborted one), so count whichever fires first.
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      activeRequests--;
       const duration = Date.now() - start;
-      console.debug(`[shutdown] request finished ${req.method} ${req.url} ${duration}ms, activeRequests=${activeRequests}`);
-    });
-
-    res.on('close', () => {
-      activeRequests = Math.max(0, activeRequests - 1);
-      console.debug(`[shutdown] request closed ${req.method} ${req.url}, activeRequests=${activeRequests}`);
-    });
+      console.debug(`[shutdown] request done ${req.method} ${req.url} ${duration}ms, activeRequests=${activeRequests}`);
+    };
+    res.on('finish', release);
+    res.on('close', release);
     next();
   });
 
