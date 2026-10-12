@@ -34,12 +34,40 @@ describe("errorHandler", () => {
     mockLoggerError.mockReset();
   });
 
-  it("maps a generic Error to 500 with its message", () => {
+  it("hides an unexpected error's message behind a generic 500", () => {
+    // Unexpected errors carry internals: raw Soroban simulation diagnostics
+    // ("Contract call failed: ..."), AWS SDK errors naming the S3 bucket and
+    // endpoint, Stellar SDK XDR errors. None of that is for the client.
     const res = fakeRes();
-    errorHandler(new Error("boom"), {} as never, res, vi.fn());
+    errorHandler(
+      new Error("Contract call failed: HostError: Error(WasmVm, InvalidAction)"),
+      {} as never,
+      res,
+      vi.fn()
+    );
 
     expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "boom" });
+    expect(res.body).toEqual({ error: "Internal server error" });
+  });
+
+  it("hides the message of an error that carries a 5xx status of its own", () => {
+    const err = Object.assign(new Error("upstream S3 bucket nova-prod-images unreachable"), {
+      status: 502,
+    });
+    const res = fakeRes();
+    errorHandler(err, {} as never, res, vi.fn());
+
+    expect(res.statusCode).toBe(502);
+    expect(res.body).toEqual({ error: "Internal server error" });
+  });
+
+  it("still logs the original message of a hidden 500", () => {
+    errorHandler(new Error("boom"), {} as never, fakeRes(), vi.fn());
+
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.objectContaining({ message: "boom" }) }),
+      expect.any(String)
+    );
   });
 
   it("respects a custom status property on the error, e.g. an auth error", () => {

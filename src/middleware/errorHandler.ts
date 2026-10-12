@@ -17,5 +17,8 @@ export function errorHandler(
   }
 
   const status = (err as { status?: number }).status ?? 500;
-  res.status(status).json({ error: err.message });
+  // 4xx messages are written for the client; 5xx ones carry internals (raw
+  // RPC diagnostics, S3/AWS errors), which are logged above but not returned.
+  const message = status >= 500 ? "Internal server error" : err.message;
+  res.status(status).json({ error: message });
 }
