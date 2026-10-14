@@ -295,9 +295,14 @@ function normalizeStatus(status: unknown): string {
   return typeof status === "string" ? status : String(status);
 }
 
-function toDateIso(dateUnix: unknown): string {
-  const seconds = Number(dateUnix);
-  return new Date(seconds * 1000).toISOString();
+/**
+ * Returns undefined for a date JavaScript can't represent. create_event
+ * accepts any future u64, and toISOString() throws past ~year 275760,
+ * which would otherwise 500 the whole events list over one event.
+ */
+function toDateIso(dateUnix: unknown): string | undefined {
+  const date = new Date(Number(dateUnix) * 1000);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
 /**
