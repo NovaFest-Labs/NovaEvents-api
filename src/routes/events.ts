@@ -23,6 +23,7 @@ import {
   ImageValidationError,
 } from "../services/imageService";
 import { sendTicketPurchaseConfirmation } from "../services/notificationService";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -37,7 +38,9 @@ router.get("/", eventsListLimiter, async (req: Request, res: Response, next: Nex
     res.json(serializeBigInt(filtered.map(toEventSummary)));
   } catch (err) {
     if (err instanceof EventsUnavailableError) {
-      res.status(503).json({ error: err.message });
+      // err.message embeds the raw RPC failure, so log it rather than return it.
+      logger.error({ err: { message: err.message, stack: err.stack } }, "Events list unavailable");
+      res.status(503).json({ error: "Events index is currently unavailable" });
       return;
     }
     next(err);

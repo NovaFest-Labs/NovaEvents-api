@@ -126,7 +126,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Event"
         "503":
-          description: Indexer is unavailable (disabled or not yet synced)
+          description: Events couldn't be fetched from the Stellar RPC
           content:
             application/json:
               schema:
