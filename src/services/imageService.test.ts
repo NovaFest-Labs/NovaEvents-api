@@ -118,6 +118,19 @@ describe("uploadEventImage", () => {
       await expect(uploadEventImage(1, file)).resolves.not.toThrow();
     });
 
+    it.each(["cover.html", "cover.svg", "cover.png.exe", "COVER.PNG", "cover"])(
+      "stores a verified PNG uploaded as %j under a .png key",
+      async (originalname) => {
+        // The extension in the public URL must follow the verified content,
+        // not the client-chosen filename: a host that picks the served type
+        // from the extension would otherwise serve this upload as HTML.
+        await uploadEventImage(1, fakeFile({ originalname }));
+
+        const key = mockUploadToS3.mock.calls[0][0];
+        expect(key).toMatch(/^events\/1\/cover-[0-9a-f]{16}\.png$/);
+      }
+    );
+
     it("rejects a file whose magic bytes match a different image type than declared", async () => {
       const mismatched = fakeFile({
         mimetype: "image/png",

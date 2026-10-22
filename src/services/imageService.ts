@@ -1,4 +1,3 @@
-import path from "path";
 import crypto from "crypto";
 import { uploadToS3, UploadResult } from "../lib/s3";
 import { setEventImageUrl } from "../lib/imageStore";
@@ -59,7 +58,10 @@ export async function uploadEventImage(
   }
 
   // --- build a collision-resistant key ---
-  const ext = path.extname(file.originalname).toLowerCase() || mimeToExt(file.mimetype);
+  // Derive the extension from the verified type, never the client-chosen
+  // filename: a host that serves by extension would otherwise serve a
+  // "cover.html" upload (valid PNG bytes) as HTML from a public URL.
+  const ext = mimeToExt(file.mimetype);
   const randomSuffix = crypto.randomBytes(8).toString("hex");
   const key = `events/${eventId}/cover-${randomSuffix}${ext}`;
 
