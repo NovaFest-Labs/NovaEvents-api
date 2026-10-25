@@ -15,6 +15,7 @@ import { checkRpcHealth } from "./lib/rpcHealth";
 import { requestLogger } from "./middleware/logger";
 import { logger } from "./lib/logger";
 import { setupGracefulShutdown } from "./gracefulShutdown";
+import { resolveTrustProxy } from "./lib/trustProxy";
 
 // start indexer if enabled
 import { startIndexer } from "./services/indexer";
@@ -34,6 +35,11 @@ if (missing.length > 0) {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Without this, req.ip (and every rate limiter keyed on it) resolves to
+// the reverse proxy's own address for every request, since Express
+// ignores X-Forwarded-For by default. See lib/trustProxy.ts.
+app.set("trust proxy", resolveTrustProxy(process.env.TRUST_PROXY));
 
 app.use(helmet());
 app.use(cors());
