@@ -33,11 +33,16 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/openapi.yaml ./openapi.yaml
 
-# Create the default data directory for the SQLite index
-RUN mkdir -p data
-
 # Run as a non-root user for security
 RUN addgroup -S novaevents && adduser -S novaevents -G novaevents
+
+# Create the default data directory for the SQLite index and the local
+# image-URL store, owned by the user that actually runs the process below.
+# /app itself stays root-owned, so a directory created here without an
+# explicit chown would be unwritable to that user — the default
+# INDEX_DB_PATH and IMAGE_STORE_PATH both resolve under it.
+RUN mkdir -p data && chown -R novaevents:novaevents data
+
 USER novaevents
 
 EXPOSE 3001
