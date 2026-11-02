@@ -112,10 +112,22 @@ paths:
       tags: [events]
       summary: List all events
       description: |
-        Returns all events from the local SQLite index. The index is refreshed
-        approximately every 30 seconds (configurable via `INDEX_SYNC_INTERVAL_MS`),
-        so results can be up to ~30 s behind on-chain state.
+        Queries the contract directly for every event (one RPC round trip per
+        event, run in parallel), so results always reflect live on-chain
+        state. This does not read from the local SQLite index: the
+        background indexer writes that index, but nothing reads it yet.
       operationId: listEvents
+      parameters:
+        - name: organizer
+          in: query
+          required: false
+          description: |
+            Filters to events whose organizer address exactly matches this
+            value. Not validated as a well-formed Stellar address: a
+            malformed value simply matches no event and returns an empty
+            array rather than an error.
+          schema:
+            type: string
       responses:
         "200":
           description: Array of events
