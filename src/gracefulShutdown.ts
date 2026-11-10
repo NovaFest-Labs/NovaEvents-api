@@ -1,5 +1,5 @@
 import http from 'http';
-import { Application, Request, Response, NextFunction } from 'express';
+import { Application } from 'express';
 import net from 'net';
 
 export interface GracefulOptions {
@@ -10,11 +10,18 @@ export interface GracefulOptions {
 }
 
 export function setupGracefulShutdown(opts: GracefulOptions) {
-  const { server, app, timeoutMs = 30_000, onShutdown } = opts;
+  const { server, timeoutMs = 30_000, onShutdown } = opts;
 
   let activeRequests = 0;
-  
-  app.use((req: Request, res: Response, next: NextFunction) => {
+
+  // Tracked on the raw http.Server via its 'request' event rather than an
+  // Express app.use() middleware. index.ts creates the server and calls
+  // this function after every route and the error handler are already
+  // registered, so a middleware added here would land at the end of the
+  // Express stack and never run: a matched route sends its response and
+  // never calls next(). The server's 'request' event fires for every
+  // request no matter when or where Express middleware is registered.
+  server.on('request', (req: http.IncomingMessage, res: http.ServerResponse) => {
     activeRequests++;
     const start = Date.now();
     // Node emits both 'finish' and 'close' for a normally completed response
@@ -29,7 +36,6 @@ export function setupGracefulShutdown(opts: GracefulOptions) {
     };
     res.on('finish', release);
     res.on('close', release);
-    next();
   });
 
   const sockets = new Set<net.Socket>();

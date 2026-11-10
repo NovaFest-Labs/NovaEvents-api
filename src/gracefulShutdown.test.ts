@@ -76,4 +76,46 @@ describe("setupGracefulShutdown", () => {
     expect(inFlightAfterFast).toBe(1);
     expect(tracker.getActiveRequests()).toBe(0);
   });
+
+  it("still tracks requests when routes are registered before setupGracefulShutdown is called", async () => {
+    // index.ts registers every route and the error handler, THEN creates the
+    // server and calls setupGracefulShutdown. If tracking relied on
+    // app.use() middleware, it would land after those routes in the stack
+    // and never run, since a matched route sends its response and never
+    // calls next().
+    for (const event of PROCESS_EVENTS) listenersBefore.set(event, [...process.listeners(event)]);
+
+    const app = express();
+
+    let releaseSlow!: () => void;
+    const slowGate = new Promise<void>((r) => (releaseSlow = r));
+    let slowStarted!: () => void;
+    const slowHasStarted = new Promise<void>((r) => (slowStarted = r));
+
+    app.get("/slow", async (_req, res) => {
+      slowStarted();
+      await slowGate;
+      res.send("slow");
+    });
+
+    server = http.createServer(app);
+    const tracker = setupGracefulShutdown({ server, app });
+
+    await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
+    const { port } = server.address() as AddressInfo;
+
+    const slow = get(port, "/slow");
+    await slowHasStarted;
+
+    let inFlightDuringSlow: number;
+    try {
+      inFlightDuringSlow = tracker.getActiveRequests();
+    } finally {
+      releaseSlow();
+      await slow;
+    }
+
+    expect(inFlightDuringSlow).toBe(1);
+    expect(tracker.getActiveRequests()).toBe(0);
+  });
 });
