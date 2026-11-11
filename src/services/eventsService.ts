@@ -4,6 +4,7 @@ import { getEventImageUrl } from "../lib/imageStore";
 import { isValidStellarAddress } from "../lib/validation";
 
 export class InvalidSponsorAddressError extends Error {
+  status = 400;
   constructor(public readonly sponsorAddress: string) {
     super(`"${sponsorAddress}" is not a valid Stellar address`);
     this.name = "InvalidSponsorAddressError";

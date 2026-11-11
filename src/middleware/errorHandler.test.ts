@@ -8,7 +8,11 @@ vi.mock("../lib/logger", () => ({ logger: { error: vi.fn() } }));
 vi.mock("../lib/stellar", () => ({ simulateContractCall: vi.fn() }));
 
 import { logger } from "../lib/logger";
-import { EventNotFoundError, TicketNotFoundError } from "../services/eventsService";
+import {
+  EventNotFoundError,
+  TicketNotFoundError,
+  InvalidSponsorAddressError,
+} from "../services/eventsService";
 import { errorHandler } from "./errorHandler";
 
 const mockLoggerError = vi.mocked(logger.error);
@@ -91,6 +95,22 @@ describe("errorHandler", () => {
     errorHandler(new TicketNotFoundError(1, 5), {} as never, res, vi.fn());
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it("maps InvalidSponsorAddressError to 400 with its own message", () => {
+    // getSponsorShare throws this directly (see eventsService.test.ts), and
+    // the /:id/sponsors/:address/share route happens to pre-validate the
+    // address itself before calling it today, but the error class exists
+    // specifically to be a clean 400 if it ever does reach this handler —
+    // e.g. from another caller of getSponsorShare, or if that route's own
+    // pre-check is ever simplified away as "redundant" with this one.
+    const res = fakeRes();
+    errorHandler(new InvalidSponsorAddressError("not-a-real-address"), {} as never, res, vi.fn());
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      error: '"not-a-real-address" is not a valid Stellar address',
+    });
   });
 
   it("logs every error via the shared logger", () => {
