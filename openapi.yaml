@@ -331,7 +331,7 @@ paths:
                 invalidEventId:
                   summary: Invalid event ID
                   value:
-                    error: "event id must be a positive integer"
+                    error: "event id must be a non-negative integer"
                 invalidAddress:
                   summary: Invalid Stellar address
                   value:
@@ -365,7 +365,7 @@ paths:
                 invalidEventId:
                   summary: Invalid event ID
                   value:
-                    error: "event id must be a positive integer"
+                    error: "event id must be a non-negative integer"
                 invalidTicketId:
                   summary: Invalid ticket ID
                   value:
@@ -610,10 +610,10 @@ components:
       name: id
       in: path
       required: true
-      description: Numeric event ID (positive integer)
+      description: Numeric event ID (non-negative integer)
       schema:
         type: integer
-        minimum: 1
+        minimum: 0
         example: 42
 
     TicketId:
@@ -628,13 +628,13 @@ components:
 
   responses:
     InvalidEventId:
-      description: Event ID is not a valid positive integer
+      description: Event ID is not a valid non-negative integer
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
-            error: "event id must be a positive integer"
+            error: "event id must be a non-negative integer"
 
     InternalError:
       description: Unexpected internal server error
