@@ -93,15 +93,22 @@ docker run --rm \
 
 ### Required environment variables
 
+The server exits on startup (`process.exit(1)`) if any of these are missing —
+including the S3 credentials, which are required for image uploads to work
+at all, not optional.
+
 | Variable | Description |
 |----------|-------------|
 | `STELLAR_RPC_URL` | Soroban RPC endpoint (e.g. `https://soroban-testnet.stellar.org`) |
 | `NOVA_EVENTS_CONTRACT_ID` | NovaEvents contract address on Stellar |
+| `S3_BUCKET_NAME` | S3-compatible bucket name for event cover images |
+| `S3_ACCESS_KEY_ID` | S3-compatible access key ID |
+| `S3_SECRET_ACCESS_KEY` | S3-compatible secret access key |
 
 ### Optional environment variables
 
 See [`.env.example`](./.env.example) for the full list of optional variables
-(S3 credentials, email settings, indexer tuning, etc.).
+(S3 region/endpoint for non-AWS providers, email settings, indexer tuning, etc.).
 
 > **Never pass secrets via `docker build --build-arg`** — use `--env-file` or
 > your orchestrator's secrets manager at runtime.
