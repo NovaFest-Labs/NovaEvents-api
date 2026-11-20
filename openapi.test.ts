@@ -7,6 +7,9 @@ import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
 import { parse } from "yaml";
+import express from "express";
+import request from "supertest";
+import { eventsListLimiter } from "./src/middleware/rateLimiter";
 
 const spec = parse(fs.readFileSync(path.join(__dirname, "openapi.yaml"), "utf-8")) as Record<
   string,
@@ -52,5 +55,21 @@ describe("openapi.yaml matches validateEventId's actual behavior", () => {
         );
       }
     }
+  });
+});
+
+describe("openapi.yaml documents GET /api/events's actual rate-limit response", () => {
+  it("matches the real 429 body from eventsListLimiter", async () => {
+    const app = express();
+    app.get("/events", eventsListLimiter, (_req, res) => res.json([]));
+
+    const requests = Array.from({ length: 21 }, () => request(app).get("/events"));
+    const results = await Promise.all(requests);
+    const throttled = results.find((r) => r.status === 429);
+
+    expect(throttled, "none of the 21 requests were throttled").toBeDefined();
+    expect(throttled!.body.error).toBe(
+      get(spec, "paths./api/events.get.responses.429.content.application/json.example.error")
+    );
   });
 });

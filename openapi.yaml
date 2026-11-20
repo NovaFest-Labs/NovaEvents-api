@@ -137,6 +137,17 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Event"
+        "429":
+          description: |
+            Too many requests to this endpoint. It has its own, stricter
+            rate limit than the rest of the API, since each request fans
+            out one Soroban RPC call per event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Too many requests to the events list endpoint, please try again later."
         "503":
           description: Events couldn't be fetched from the Stellar RPC
           content:
