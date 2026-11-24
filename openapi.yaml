@@ -586,15 +586,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-          description: Missing organizer authentication headers
+          description: Missing organizer authentication headers, or expired signature timestamp
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: "Missing organizer authentication headers (x-organizer-address, x-organizer-signature, x-organizer-timestamp)."
+              examples:
+                missingHeaders:
+                  summary: Missing headers
+                  value:
+                    error: "Missing organizer authentication headers (x-organizer-address, x-organizer-signature, x-organizer-timestamp)."
+                expired:
+                  summary: Expired timestamp
+                  value:
+                    error: "Signature timestamp is missing, invalid, or expired."
         "403":
-          description: Caller is not the organizer, or signature is invalid / expired
+          description: Caller is not the organizer, or signature is invalid
           content:
             application/json:
               schema:
@@ -608,10 +615,6 @@ paths:
                   summary: Invalid signature
                   value:
                     error: "Invalid organizer signature."
-                expired:
-                  summary: Expired timestamp
-                  value:
-                    error: "Signature timestamp is missing, invalid, or expired."
         "500":
           $ref: "#/components/responses/InternalError"
 

@@ -3,13 +3,20 @@
  * This spec is served live at /api/docs (see src/routes/docs.ts), so a wrong
  * example here isn't just a comment — it's what a real API consumer reads.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import { parse } from "yaml";
 import express from "express";
 import request from "supertest";
+import { Request, Response } from "express";
 import { eventsListLimiter } from "./src/middleware/rateLimiter";
+
+// verifyOrganizer.ts imports eventsService.ts, which imports lib/stellar,
+// which constructs a real Soroban RPC client at module load time — mock it
+// the same way every other test touching that chain does.
+vi.mock("./src/lib/stellar", () => ({ simulateContractCall: vi.fn() }));
+import { verifyOrganizer } from "./src/middleware/verifyOrganizer";
 
 const spec = parse(fs.readFileSync(path.join(__dirname, "openapi.yaml"), "utf-8")) as Record<
   string,
@@ -71,5 +78,52 @@ describe("openapi.yaml documents GET /api/events's actual rate-limit response", 
     expect(throttled!.body.error).toBe(
       get(spec, "paths./api/events.get.responses.429.content.application/json.example.error")
     );
+  });
+});
+
+describe("openapi.yaml files the expired-timestamp example under verifyOrganizer's real status code", () => {
+  it("verifyOrganizer actually returns 401, not 403, for an expired timestamp", async () => {
+    // The check happens before any contract lookup, so no service mocking
+    // beyond lib/stellar (above) is needed.
+    const req = {
+      params: { id: "1" },
+      header(name: string) {
+        const headers: Record<string, string> = {
+          "x-organizer-address": "GA".padEnd(56, "A"),
+          "x-organizer-signature": "deadbeef",
+          "x-organizer-timestamp": String(Date.now() - 10 * 60 * 1000), // 10 min old
+        };
+        return headers[name.toLowerCase()];
+      },
+    } as unknown as Request;
+    const res = {
+      statusCode: 0,
+      body: undefined as unknown,
+      status(code: number) {
+        res.statusCode = code;
+        return res;
+      },
+      json(payload: unknown) {
+        res.body = payload;
+        return res;
+      },
+    } as unknown as Response & { statusCode: number; body: unknown };
+
+    await verifyOrganizer(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(401);
+    expect(
+      get(
+        spec,
+        "paths./api/events/{id}/image.post.responses.401.content.application/json.examples.expired.value.error"
+      )
+    ).toBe((res.body as { error: string }).error);
+    // And NOT filed under 403, where this example used to incorrectly live.
+    expect(
+      get(
+        spec,
+        "paths./api/events/{id}/image.post.responses.403.content.application/json.examples.expired"
+      )
+    ).toBeUndefined();
   });
 });
