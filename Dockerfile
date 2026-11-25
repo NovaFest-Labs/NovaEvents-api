@@ -47,4 +47,9 @@ USER novaevents
 
 EXPOSE 3001
 
+# /health is registered before the global rate limiter specifically so
+# monitoring probes are never throttled — see src/index.ts.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O- http://127.0.0.1:3001/health || exit 1
+
 CMD ["node", "dist/index.js"]
