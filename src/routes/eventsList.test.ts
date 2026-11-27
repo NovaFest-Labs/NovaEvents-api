@@ -81,4 +81,30 @@ describe("GET /api/events", () => {
     expect(res.body[0].date).toBe("2027-01-15T08:00:00.000Z");
     expect(res.body[1].date).toBeUndefined();
   });
+
+  it("returns 200 and the filtered list for a valid organizer address", async () => {
+    mockGetAllEvents.mockResolvedValue([]);
+    const res = await request(buildApp()).get(
+      "/api/events?organizer=GCVCPLU7JBIOIDZARACNU27LETDUJF4V4HN3KCFYE7T6KHD7SKF7IT5B"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it("returns 400 for a malformed organizer address instead of silently returning []", async () => {
+    const res = await request(buildApp()).get("/api/events?organizer=GCVCPLU7");
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: "Invalid organizer address" });
+    expect(mockGetAllEvents).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for an EVM-style address passed as organizer", async () => {
+    const res = await request(buildApp()).get(
+      "/api/events?organizer=0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+    );
+
+    expect(res.status).toBe(400);
+  });
 });
