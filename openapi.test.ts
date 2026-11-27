@@ -17,6 +17,8 @@ import { eventsListLimiter } from "./src/middleware/rateLimiter";
 // the same way every other test touching that chain does.
 vi.mock("./src/lib/stellar", () => ({ simulateContractCall: vi.fn() }));
 import { verifyOrganizer } from "./src/middleware/verifyOrganizer";
+import { getAdmin } from "./src/services/adminService";
+import { simulateContractCall } from "./src/lib/stellar";
 
 const spec = parse(fs.readFileSync(path.join(__dirname, "openapi.yaml"), "utf-8")) as Record<
   string,
@@ -62,6 +64,21 @@ describe("openapi.yaml matches validateEventId's actual behavior", () => {
         );
       }
     }
+  });
+});
+
+describe("openapi.yaml documents GET /api/admin's actual response shape", () => {
+  it("matches getAdmin() returning a plain address string, not an object", async () => {
+    vi.mocked(simulateContractCall).mockResolvedValue(
+      "GABC1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234"
+    );
+
+    const admin = await getAdmin();
+    expect(typeof admin).toBe("string");
+
+    expect(get(spec, "paths./api/admin.get.responses.200.content.application/json.schema.properties.admin.type")).toBe(
+      "string"
+    );
   });
 });
 

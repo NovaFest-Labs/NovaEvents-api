@@ -101,9 +101,9 @@ paths:
                 type: object
                 properties:
                   admin:
-                    type: object
-                    description: Admin metadata returned by the contract
-                    additionalProperties: true
+                    type: string
+                    description: The on-chain admin's Stellar public key (`G...`)
+                    example: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
         "500":
           $ref: "#/components/responses/InternalError"
 
